@@ -4,10 +4,13 @@ import {Header} from "./widgets/header";
 import {Sidebar} from "./widgets/sidebar";
 import {useTokenRefresh} from "./features/Auth/useTokenRefresh";
 import {useAuth} from "./features/Auth/useAuth";
+import {Toaster} from "react-hot-toast";
+import {useNotificationSocket} from "./features/Notifications/useNotificationSocket";
 
 const App: React.FC = () => {
     useTokenRefresh();
     const {authenticated} = useAuth();
+    useNotificationSocket();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     useEffect(() => {
@@ -30,7 +33,7 @@ const App: React.FC = () => {
     return (
         <div
             className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white transition-colors duration-300">
-
+            <Toaster/>
             <Header isAuthenticated={authenticated}/>
 
             <Sidebar

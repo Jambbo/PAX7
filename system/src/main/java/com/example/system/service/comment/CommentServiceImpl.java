@@ -7,6 +7,8 @@ import com.example.system.repository.CommentRepository;
 import com.example.system.repository.PostRepository;
 import com.example.system.repository.UserRepository;
 import com.example.system.repository.CommentLikeRepository;
+import com.example.system.service.notification.NotificationService;
+import com.example.system.domain.model.notification.NotificationType;
 import com.example.system.domain.model.CommentLike;
 import com.example.system.domain.model.CommentLikeId;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class CommentServiceImpl implements CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentLikeRepository commentLikeRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -35,7 +38,18 @@ public class CommentServiceImpl implements CommentService {
         comment.setPost(post);
         comment.setAuthor(author);
 
-        return commentRepository.save(comment);
+        Comment savedComment = commentRepository.save(comment);
+
+        if (post.getAuthor() != null) {
+            notificationService.createNotification(
+                    post.getAuthor().getId(),
+                    authorId,
+                    NotificationType.NEW_COMMENT,
+                    savedComment.getId().toString()
+            );
+        }
+
+        return savedComment;
     }
 
     @Override
@@ -103,6 +117,15 @@ public class CommentServiceImpl implements CommentService {
                             .build();
                     commentLikeRepository.save(newLike);
                     comment.setLikes(comment.getLikes() + 1);
+
+                    if (comment.getAuthor() != null) {
+                        notificationService.createNotification(
+                                comment.getAuthor().getId(),
+                                userId,
+                                NotificationType.LIKE_COMMENT,
+                                comment.getId().toString()
+                        );
+                    }
                 }
         );
 

@@ -13,11 +13,14 @@ import {
     Plus,
     Hash,
     Calendar,
-    Lock // Додано іконку замочка
+    Lock
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+
+import { useSelector } from "react-redux";
+import { RootState } from "../../../app/layout/store";
 import { logout } from "../../../features/Auth/authService";
-import { AuthModal } from "../../../widgets/AuthModal/AuthModal";
+import { AuthModal } from "../../AuthModal/AuthModal";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -57,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
+    const unreadNotificationsCount = useSelector((state: RootState) => state.notifications?.unreadCount || 0);
 
     const menuItems = [
         { id: "home", icon: Home, label: "Home", badge: null, requiresAuth: false },
@@ -65,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
         { id: "trending", icon: TrendingUp, label: "Trending", badge: 2, requiresAuth: false },
         { id: "groups", icon: Users, label: "Groups", badge: null, requiresAuth: false },
         { id: "bookmarks", icon: Bookmark, label: "Bookmarks", badge: null, requiresAuth: true, authMessage: "Please log in to view your saved bookmarks." },
-        { id: "notifications", icon: Bell, label: "Notifications", badge: "5", requiresAuth: true, authMessage: "Please log in to see your notifications." },
+        { id: "notifications", icon: Bell, label: "Notifications", badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null, requiresAuth: true, authMessage: "Please log in to see your notifications." },
     ];
 
     const quickLinks = [
