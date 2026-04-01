@@ -5,6 +5,8 @@ import com.example.system.domain.model.User;
 import com.example.system.repository.PostRepository;
 import com.example.system.repository.UserRepository;
 import com.example.system.service.user.UserService;
+import com.example.system.service.notification.NotificationService;
+import com.example.system.domain.model.notification.NotificationType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ public class PostServiceImpl implements PostService {
     private final PostRepository postRepository;
     private final UserService userService;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -116,6 +119,15 @@ public class PostServiceImpl implements PostService {
         if(!likedPosts.contains(post)){
             post.setLikes(post.getLikes() != null ? post.getLikes() + 1 : 1L);
             likedPosts.add(post);
+
+            if (post.getAuthor() != null) {
+                notificationService.createNotification(
+                        post.getAuthor().getId(),
+                        userId,
+                        NotificationType.LIKE_POST,
+                        postId.toString()
+                );
+            }
         }else{
             long currentLikes = post.getLikes() != null ? post.getLikes() : 0L;
             post.setLikes(Math.max(0L, currentLikes - 1));

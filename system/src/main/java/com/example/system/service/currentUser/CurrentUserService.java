@@ -14,18 +14,24 @@ public class CurrentUserService {
 
     private final UserRepository userRepository;
 
+    public String getCurrentUserId() {
+        return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+    }
+
     @Transactional
     public User getOrCreateUser(Jwt jwt) {
         String userId = jwt.getSubject();
 
-        return userRepository.findById(userId)
-                .orElseGet(() -> {
-                    try {
-                        return createUserFromJwt(jwt);
-                    } catch (Exception e) {
-                        return userRepository.findById(userId).orElseThrow();
-                    }
-                });
+        User existing = userRepository.findById(userId).orElse(null);
+        if (existing != null) {
+            return existing;
+        }
+
+        try {
+            return createUserFromJwt(jwt);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            return userRepository.findById(userId).orElseThrow();
+        }
     }
 
     private User createUserFromJwt(Jwt jwt) {

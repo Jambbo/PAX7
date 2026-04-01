@@ -4,10 +4,12 @@ import com.example.system.domain.model.User;
 import com.example.system.domain.model.chat.Conversation;
 import com.example.system.domain.model.chat.Message;
 import com.example.system.domain.model.chat.MessageStatus;
+import com.example.system.domain.model.notification.NotificationType;
 import com.example.system.repository.ConversationRepository;
 import com.example.system.repository.MessageRepository;
 import com.example.system.repository.UserRepository;
 import com.example.system.rest.dto.chat.ChatMessageRequest;
+import com.example.system.service.notification.NotificationService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,12 +24,12 @@ public class ChatServiceImpl implements ChatService{
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
     public java.util.List<Conversation> getUserConversations(String userId) {
-        List<Conversation> conversationsByUserId = conversationRepository.findConversationsByUserId(userId);
-        return conversationsByUserId;
+        return conversationRepository.findConversationsByUserId(userId);
     }
 
     @Override
@@ -51,7 +53,16 @@ public class ChatServiceImpl implements ChatService{
                 .deleted(false)
                 .build();
 
-        return messageRepository.save(message);
+        Message savedMessage = messageRepository.save(message);
+
+        notificationService.createNotification(
+                request.recipientId(),
+                senderId,
+                NotificationType.NEW_MESSAGE,
+                savedMessage.getId()
+        );
+
+        return savedMessage;
     }
 
     private Conversation createConversation(String user1, String user2) {

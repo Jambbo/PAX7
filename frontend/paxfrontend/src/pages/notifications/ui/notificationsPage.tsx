@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, {useMemo, useState, useEffect} from 'react';
 import {
     Bell,
     AtSign,
@@ -16,30 +16,18 @@ import {
     Clock
 } from 'lucide-react';
 
+
+import {useDispatch, useSelector} from 'react-redux';
+import {RootState, AppDispatch} from '../../../app/layout/store';
+import {
+    markNotificationRead,
+    markAllNotificationsRead,
+    deleteNotificationThunk
+} from '../../../features/Notifications/notificationsSlice';
+
 type NotificationType = 'mention' | 'like' | 'follow' | 'reply' | 'system';
 
-interface NotificationItem {
-    id: number;
-    type: NotificationType;
-    title: string;
-    message: string;
-    time: string;
-    isRead: boolean;
-    actor?: {
-        name: string;
-        avatar: string;
-    };
-    context?: {
-        label: string;
-        color: string;
-    };
-    meta?: {
-        postTitle?: string;
-        count?: number;
-    };
-}
 
-// Адаптував кольори для світлої/темної теми
 const typeMeta: Record<
     NotificationType,
     {
@@ -52,43 +40,66 @@ const typeMeta: Record<
 > = {
     mention: {
         label: 'Mentions',
-        icon: <AtSign size={18} className="text-white" />,
-        pill: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-500/30' },
+        icon: <AtSign size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-blue-100 dark:bg-blue-900/20',
+            text: 'text-blue-700 dark:text-blue-300',
+            border: 'border-blue-200 dark:border-blue-500/30'
+        },
         cardBorder: 'border-blue-200 dark:border-blue-500/25',
         iconBg: 'from-blue-600 to-blue-700'
     },
     like: {
         label: 'Likes',
-        icon: <Heart size={18} className="text-white" />,
-        pill: { bg: 'bg-pink-100 dark:bg-pink-900/20', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-200 dark:border-pink-500/30' },
+        icon: <Heart size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-pink-100 dark:bg-pink-900/20',
+            text: 'text-pink-700 dark:text-pink-300',
+            border: 'border-pink-200 dark:border-pink-500/30'
+        },
         cardBorder: 'border-pink-200 dark:border-pink-500/25',
         iconBg: 'from-pink-600 to-pink-700'
     },
     follow: {
         label: 'Follows',
-        icon: <UserPlus size={18} className="text-white" />,
-        pill: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-300', border: 'border-green-200 dark:border-green-500/30' },
+        icon: <UserPlus size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-green-100 dark:bg-green-900/20',
+            text: 'text-green-700 dark:text-green-300',
+            border: 'border-green-200 dark:border-green-500/30'
+        },
         cardBorder: 'border-green-200 dark:border-green-500/25',
         iconBg: 'from-green-600 to-green-700'
     },
     reply: {
         label: 'Replies',
-        icon: <MessageSquare size={18} className="text-white" />,
-        pill: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-500/30' },
+        icon: <MessageSquare size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-purple-100 dark:bg-purple-900/20',
+            text: 'text-purple-700 dark:text-purple-300',
+            border: 'border-purple-200 dark:border-purple-500/30'
+        },
         cardBorder: 'border-purple-200 dark:border-purple-500/25',
         iconBg: 'from-purple-600 to-purple-700'
     },
     system: {
         label: 'System',
-        icon: <ShieldAlert size={18} className="text-white" />,
-        pill: { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-500/30' },
+        icon: <ShieldAlert size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-orange-100 dark:bg-orange-900/20',
+            text: 'text-orange-700 dark:text-orange-300',
+            border: 'border-orange-200 dark:border-orange-500/30'
+        },
         cardBorder: 'border-orange-200 dark:border-orange-500/25',
         iconBg: 'from-orange-600 to-orange-700'
     }
 };
 
 export const NotificationsPage: React.FC = () => {
-    // --- ЛОГІКА КОЛЬОРІВ ---
+    const dispatch = useDispatch<AppDispatch>();
+    const notificationsRaw = useSelector((state: RootState) => state.notifications.items);
+    const unreadCount = useSelector((state: RootState) => state.notifications.unreadCount);
+
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -112,71 +123,33 @@ export const NotificationsPage: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
-    const [notifications, setNotifications] = useState<NotificationItem[]>([
-        {
-            id: 1,
-            type: 'mention',
-            title: 'You were mentioned in a discussion',
-            message: 'Sarah J. mentioned you: “What do you think about memoization vs. virtualization here?”',
-            time: '12 min ago',
-            isRead: false,
-            actor: { name: 'Sarah J.', avatar: 'SJ' },
-            context: { label: 'Tech Enthusiasts', color: 'from-blue-500 to-cyan-600' },
-            meta: { postTitle: 'React performance optimization patterns' }
-        },
-        {
-            id: 2,
-            type: 'reply',
-            title: 'New reply to your comment',
-            message: 'Mike R. replied: “Good point — also worth profiling with the React DevTools.”',
-            time: '1 hour ago',
-            isRead: false,
-            actor: { name: 'Mike R.', avatar: 'MR' },
-            context: { label: 'Career Growth', color: 'from-green-500 to-emerald-600' },
-            meta: { postTitle: 'My journey to full-stack' }
-        },
-        {
-            id: 3,
-            type: 'like',
-            title: 'Your post is getting traction',
-            message: 'Alex K. and 23 others liked your post.',
-            time: '3 hours ago',
-            isRead: true,
-            actor: { name: 'Alex K.', avatar: 'AK' },
-            context: { label: 'Tech Enthusiasts', color: 'from-blue-500 to-cyan-600' },
-            meta: { count: 24, postTitle: 'Top 10 VS Code extensions' }
-        },
-        {
-            id: 4,
-            type: 'follow',
-            title: 'New follower',
-            message: 'Emily S. started following you.',
-            time: 'Yesterday',
-            isRead: true,
-            actor: { name: 'Emily S.', avatar: 'ES' }
-        },
-        {
-            id: 5,
-            type: 'system',
-            title: 'Security notice',
-            message: 'A new sign-in was detected from a Windows device. If this wasn’t you, secure your account.',
-            time: '2 days ago',
-            isRead: false
-        },
-        {
-            id: 6,
-            type: 'reply',
-            title: 'Reply in your saved thread',
-            message: 'Admin posted an update to the Dark Mode 2.0 thread.',
-            time: '1 week ago',
-            isRead: true,
-            actor: { name: 'Admin', avatar: 'AD' },
-            context: { label: 'Announcements', color: 'from-purple-500 to-pink-600' },
-            meta: { postTitle: 'Dark Mode 2.0 - improvements' }
-        }
-    ]);
+    const notifications = useMemo(() => {
+        return notificationsRaw.map(n => {
+            let mappedType: NotificationType = 'system';
+            if (n.type === 'LIKE_POST' || n.type === 'LIKE_COMMENT') mappedType = 'like';
+            else if (n.type === 'NEW_COMMENT' || n.type === 'NEW_MESSAGE') mappedType = 'reply';
+            else if (n.type === 'GROUP_INVITE') mappedType = 'mention';
+            else if (n.type === 'FOLLOW') mappedType = 'follow';
 
-    const unreadCount = useMemo(() => notifications.filter(n => !n.isRead).length, [notifications]);
+            return {
+                id: n.id,
+                type: mappedType,
+                title: n.type.replace('_', ' '),
+                message: '',
+                time: new Intl.DateTimeFormat('en-US', {
+                    dateStyle: 'short',
+                    timeStyle: 'short'
+                }).format(new Date(n.createdAt)),
+                isRead: n.status === 'READ',
+                actor: n.sender ? {
+                    name: n.sender.username,
+                    avatar: n.sender.username.substring(0, 2).toUpperCase()
+                } : undefined,
+                context: undefined,
+                meta: undefined
+            };
+        });
+    }, [notificationsRaw]);
 
     const filtered = useMemo(() => {
         const q = searchQuery.trim().toLowerCase();
@@ -201,15 +174,18 @@ export const NotificationsPage: React.FC = () => {
     }, [notifications, activeFilter, showUnreadOnly, searchQuery]);
 
     const markAllAsRead = () => {
-        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        dispatch(markAllNotificationsRead());
     };
 
     const toggleRead = (id: number) => {
-        setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: !n.isRead } : n)));
+        const item = notifications.find(n => n.id === id);
+        if (item && !item.isRead) {
+            dispatch(markNotificationRead(id));
+        }
     };
 
     const removeNotification = (id: number) => {
-        setNotifications(prev => prev.filter(n => n.id !== id));
+        dispatch(deleteNotificationThunk(id));
     };
 
     return (
@@ -219,10 +195,11 @@ export const NotificationsPage: React.FC = () => {
                 <div className="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
                     <div>
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3 transition-colors">
-                            <Bell className={`text-${accentColor}-500`} size={40} />
+                            <Bell className={`text-${accentColor}-500`} size={40}/>
                             Notifications
                         </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">Mentions, replies, follows, and platform updates</p>
+                        <p className="text-gray-500 dark:text-gray-400 text-lg transition-colors">Mentions, replies,
+                            follows, and platform updates</p>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -230,11 +207,12 @@ export const NotificationsPage: React.FC = () => {
                             onClick={markAllAsRead}
                             className={`px-4 py-2 rounded-lg bg-${accentColor}-100 dark:bg-${accentColor}-900/20 border border-${accentColor}-200 dark:border-${accentColor}-500/30 text-${accentColor}-700 dark:text-${accentColor}-200 hover:bg-${accentColor}-200 dark:hover:bg-${accentColor}-900/30 transition-all flex items-center gap-2 font-medium`}
                         >
-                            <CheckCheck size={16} />
+                            <CheckCheck size={16}/>
                             Mark all as read
                         </button>
-                        <button className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all flex items-center gap-2 font-medium">
-                            <Settings size={16} />
+                        <button
+                            className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-800 transition-all flex items-center gap-2 font-medium">
+                            <Settings size={16}/>
                             Settings
                         </button>
                     </div>
@@ -242,10 +220,12 @@ export const NotificationsPage: React.FC = () => {
 
                 {/* Stats Bar */}
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                    <div className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-4 shadow-sm transition-colors`}>
+                    <div
+                        className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-4 shadow-sm transition-colors`}>
                         <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 bg-${accentColor}-600 rounded-lg flex items-center justify-center shadow-md shadow-${accentColor}-500/20`}>
-                                <Bell size={20} className="text-white" />
+                            <div
+                                className={`w-10 h-10 bg-${accentColor}-600 rounded-lg flex items-center justify-center shadow-md shadow-${accentColor}-500/20`}>
+                                <Bell size={20} className="text-white"/>
                             </div>
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-xs font-medium">Total</p>
@@ -254,10 +234,12 @@ export const NotificationsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 shadow-sm transition-colors">
+                    <div
+                        className="bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-500/20 rounded-xl p-4 shadow-sm transition-colors">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/20">
-                                <AtSign size={20} className="text-white" />
+                            <div
+                                className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-md shadow-blue-500/20">
+                                <AtSign size={20} className="text-white"/>
                             </div>
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-xs font-medium">Mentions</p>
@@ -268,10 +250,12 @@ export const NotificationsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-500/20 rounded-xl p-4 shadow-sm transition-colors">
+                    <div
+                        className="bg-pink-50 dark:bg-pink-900/10 border border-pink-200 dark:border-pink-500/20 rounded-xl p-4 shadow-sm transition-colors">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-pink-600 rounded-lg flex items-center justify-center shadow-md shadow-pink-500/20">
-                                <Heart size={20} className="text-white" />
+                            <div
+                                className="w-10 h-10 bg-pink-600 rounded-lg flex items-center justify-center shadow-md shadow-pink-500/20">
+                                <Heart size={20} className="text-white"/>
                             </div>
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-xs font-medium">Likes</p>
@@ -282,10 +266,12 @@ export const NotificationsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-gray-100 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 shadow-sm transition-colors">
+                    <div
+                        className="bg-gray-100 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 shadow-sm transition-colors">
                         <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-600 dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-md">
-                                <Clock size={20} className="text-white" />
+                            <div
+                                className="w-10 h-10 bg-gray-600 dark:bg-gray-700 rounded-lg flex items-center justify-center shadow-md">
+                                <Clock size={20} className="text-white"/>
                             </div>
                             <div>
                                 <p className="text-gray-600 dark:text-gray-400 text-xs font-medium">Unread</p>
@@ -296,7 +282,8 @@ export const NotificationsPage: React.FC = () => {
                 </div>
 
                 {/* Filters and Search */}
-                <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 mb-6 shadow-sm transition-colors">
+                <div
+                    className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 mb-6 shadow-sm transition-colors">
                     <div className="flex flex-col lg:flex-row gap-4">
                         {/* Filter Tabs */}
                         <div className="flex flex-wrap gap-2">
@@ -354,7 +341,7 @@ export const NotificationsPage: React.FC = () => {
                                         : 'bg-gray-50 dark:bg-gray-800/30 border-gray-200 dark:border-gray-700/50 text-gray-600 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50'
                                 ].join(' ')}
                             >
-                                <Filter size={16} />
+                                <Filter size={16}/>
                                 Unread only
                             </button>
                         </div>
@@ -364,12 +351,16 @@ export const NotificationsPage: React.FC = () => {
                 {/* List */}
                 <div className="space-y-3">
                     {filtered.length === 0 ? (
-                        <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-10 text-center shadow-sm">
-                            <div className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 mx-auto flex items-center justify-center mb-4">
-                                <Bell size={24} className="text-gray-400 dark:text-gray-300" />
+                        <div
+                            className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-10 text-center shadow-sm">
+                            <div
+                                className="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800/40 border border-gray-200 dark:border-gray-700/50 mx-auto flex items-center justify-center mb-4">
+                                <Bell size={24} className="text-gray-400 dark:text-gray-300"/>
                             </div>
-                            <p className="text-gray-900 dark:text-white text-lg font-semibold mb-1">No notifications found</p>
-                            <p className="text-gray-500 dark:text-gray-400">Try changing filters or clearing your search.</p>
+                            <p className="text-gray-900 dark:text-white text-lg font-semibold mb-1">No notifications
+                                found</p>
+                            <p className="text-gray-500 dark:text-gray-400">Try changing filters or clearing your
+                                search.</p>
                         </div>
                     ) : (
                         filtered.map(n => {
@@ -396,13 +387,15 @@ export const NotificationsPage: React.FC = () => {
                                                 {meta.icon}
                                             </div>
                                             {!n.isRead && (
-                                                <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full bg-${accentColor}-500 ring-2 ring-white dark:ring-gray-900`} />
+                                                <span
+                                                    className={`absolute -top-1 -right-1 w-3 h-3 rounded-full bg-${accentColor}-500 ring-2 ring-white dark:ring-gray-900`}/>
                                             )}
                                         </div>
 
                                         {/* Content */}
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                                            <div
+                                                className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                                                 <div className="min-w-0">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <h3 className="text-gray-900 dark:text-white font-semibold truncate">{n.title}</h3>
@@ -436,7 +429,8 @@ export const NotificationsPage: React.FC = () => {
                                                     <p className="text-gray-600 dark:text-gray-300 mt-1 leading-relaxed text-sm">
                                                         {n.actor ? (
                                                             <>
-                                                                <span className="text-gray-900 dark:text-white font-medium">{n.actor.name}</span>{' '}
+                                                                <span
+                                                                    className="text-gray-900 dark:text-white font-medium">{n.actor.name}</span>{' '}
                                                                 {n.message.replace(`${n.actor.name} `, '')}
                                                             </>
                                                         ) : (
@@ -446,17 +440,21 @@ export const NotificationsPage: React.FC = () => {
 
                                                     {n.meta?.postTitle && (
                                                         <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                                                            <span className="text-gray-400 dark:text-gray-500">Context:</span>{' '}
-                                                            <span className="text-gray-600 dark:text-gray-300 font-medium">{n.meta.postTitle}</span>
+                                                            <span
+                                                                className="text-gray-400 dark:text-gray-500">Context:</span>{' '}
+                                                            <span
+                                                                className="text-gray-600 dark:text-gray-300 font-medium">{n.meta.postTitle}</span>
                                                         </div>
                                                     )}
                                                 </div>
 
                                                 {/* Right meta */}
                                                 <div className="flex items-center gap-2 shrink-0">
-                                                    <span className="text-xs text-gray-500 dark:text-gray-400">{n.time}</span>
-                                                    <button className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-all">
-                                                        <MoreVertical size={16} />
+                                                    <span
+                                                        className="text-xs text-gray-500 dark:text-gray-400">{n.time}</span>
+                                                    <button
+                                                        className="p-2 rounded-lg bg-gray-50 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 text-gray-500 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-all">
+                                                        <MoreVertical size={16}/>
                                                     </button>
                                                 </div>
                                             </div>
@@ -472,7 +470,7 @@ export const NotificationsPage: React.FC = () => {
                                                             : `bg-${accentColor}-100 dark:bg-${accentColor}-900/20 border-${accentColor}-200 dark:border-${accentColor}-500/30 text-${accentColor}-700 dark:text-${accentColor}-200 hover:bg-${accentColor}-200 dark:hover:bg-${accentColor}-900/30`
                                                     ].join(' ')}
                                                 >
-                                                    <Check size={16} />
+                                                    <Check size={16}/>
                                                     {n.isRead ? 'Mark unread' : 'Mark read'}
                                                 </button>
 
@@ -480,7 +478,7 @@ export const NotificationsPage: React.FC = () => {
                                                     onClick={() => removeNotification(n.id)}
                                                     className="px-3 py-2 rounded-lg bg-red-50 dark:bg-red-900/15 border border-red-200 dark:border-red-500/25 text-red-600 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-600/25 transition-all text-sm flex items-center gap-2 font-medium"
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <Trash2 size={16}/>
                                                     Delete
                                                 </button>
                                             </div>
@@ -488,7 +486,8 @@ export const NotificationsPage: React.FC = () => {
 
                                         {/* Actor avatar */}
                                         {n.actor && (
-                                            <div className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-white font-semibold text-sm">
+                                            <div
+                                                className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-white font-semibold text-sm">
                                                 {n.actor.avatar}
                                             </div>
                                         )}
