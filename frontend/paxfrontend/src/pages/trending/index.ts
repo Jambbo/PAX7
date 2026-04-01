@@ -1,0 +1,1 @@
+export {TrendingPage} from './ui/trendingPage'

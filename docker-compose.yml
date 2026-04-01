@@ -1,0 +1,64 @@
+networks:
+  system-pax:
+    driver: bridge
+
+volumes:
+  db-data:
+    driver: local
+
+
+services:
+  postgres:
+    image: 'postgres:17.5-alpine'
+    ports:
+      - '5435:5432'
+    env_file:
+      - ./system/.env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  pax-keycloak-postgres:
+    image: postgres:17.5-alpine
+    container_name: pax-keycloak-postgres
+    environment:
+      POSTGRES_USER: ${KC_DB_USERNAME}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
+      POSTGRES_DB: keycloak
+#    env_file:
+#      - ./system/.env
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak" ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  pax-keycloak:
+    image: quay.io/keycloak/keycloak:26.2
+    container_name: pax-keycloak
+    command: start-dev --metrics-enabled=true
+    ports:
+      - "8080:8080"
+      - "9000:9000"
+    environment:
+      JAVA_OPTS: -Dkeycloak.migration.usersExportStrategy=REALM_FILE
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_METRICS_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    depends_on:
+      pax-keycloak-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -fsS http://localhost:9000/health/ready || exit 1" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
