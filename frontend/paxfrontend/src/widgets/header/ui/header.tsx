@@ -9,16 +9,13 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
-    // Зчитуємо акцентний колір з пам'яті
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
 
-    // Стейт та реф для випадаючого меню
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    // Слідкуємо за змінами (на випадок оновлення в іншій вкладці або перезавантаження)
     useEffect(() => {
         const handleStorageChange = () => {
             setAccentColor(localStorage.getItem('site_accent_color') || 'purple');
@@ -33,7 +30,6 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
         };
     }, []);
 
-    // Закриття меню при кліку поза ним
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -53,10 +49,8 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
     return (
         <header className="fixed z-50 top-0 w-full h-16 bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow-lg transition-colors duration-300">
-            {/* Використовуємо h-full замість py-4, щоб елементи ідеально центрувалися по вертикалі */}
             <div className="px-6 h-full flex items-center justify-between">
 
-                {/* Logo / Brand - Старі відступи (ml-16, text-4xl) + НОВИЙ ГРАДІЄНТ */}
                 <Link
                     to="/"
                     className={`text-4xl font-bold bg-gradient-to-r from-${accentColor}-600 to-indigo-600 bg-clip-text text-transparent ml-16`}
@@ -64,15 +58,12 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                     PAX
                 </Link>
 
-                {/* Search - Старі відступи (ml-48) */}
                 <div className="md:block hidden flex-1 ml-48 mr-auto items-center">
                     <Search />
                 </div>
 
-                {/* Auth buttons / User Profile - Стара права панель */}
                 <div className="hidden md:flex space-x-3 items-center">
 
-                    {/* якщо не залогінений (зі старим дизайном кнопок) */}
                     {!isAuthenticated && (
                         <>
                             <Link
@@ -92,7 +83,6 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                         </>
                     )}
 
-                    {/* якщо авторизований - показуємо НОВЕ ВИПАДАЮЧЕ МЕНЮ у старій оболонці */}
                     {isAuthenticated && (
                         <div className="relative" ref={dropdownRef}>
                             <button

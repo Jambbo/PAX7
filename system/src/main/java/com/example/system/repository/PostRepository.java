@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long> {
 
+    List<Post> findTop5ByTextContainingIgnoreCase(String text);
+
     List<Post> findByAuthorId(String authorId);
 
     List<Post> findByGroupId(Long groupId);
