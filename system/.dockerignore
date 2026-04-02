@@ -1,6 +1,8 @@
 .gradle
-build/
-bin/
-.idea/
+build
+!build.gradle.kts
+!build.gradle
+bin
+.idea
 .DS_Store
 *.iml
