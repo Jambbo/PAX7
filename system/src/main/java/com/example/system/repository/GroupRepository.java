@@ -4,12 +4,23 @@ import com.example.system.domain.model.Group;
 import com.example.system.domain.model.GroupPrivacy;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
 public interface GroupRepository extends JpaRepository<Group, Long> {
 
-    List<Group> findTop5ByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String name, String description);
+    @Query("""
+       SELECT g FROM Group g 
+       WHERE (LOWER(g.name) LIKE LOWER(CONCAT('%', :name, '%')) 
+           OR LOWER(g.description) LIKE LOWER(CONCAT('%', :description, '%'))) 
+       AND g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL
+       ORDER BY g.id ASC
+       LIMIT 5
+       """)
+    List<Group> findTop5ByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(
+            @Param("name") String name,
+            @Param("description") String description);
 
     List<Group> findByOwnerId(String ownerId);
 
