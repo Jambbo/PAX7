@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Link} from 'react-router-dom';
+import {Link, useLocation} from 'react-router-dom';
 import {
     TrendingUp,
     MessageSquare,
@@ -64,6 +64,8 @@ const ImageModal: React.FC<ImageModalProps> = ({imageUrl, onClose}) => {
 // ГОЛОВНИЙ КОМПОНЕНТ HOME
 // ============================================================================
 export const Home: React.FC = () => {
+    const location = useLocation();
+    
     // --- 1. СТЕЙТИ ТА ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
@@ -203,6 +205,27 @@ export const Home: React.FC = () => {
         loadPosts();
     }, []);
 
+    // 8. Auto-scroll to post if hash presents in URL
+    useEffect(() => {
+        if (!isLoading && posts.length > 0 && location.hash) {
+            const id = location.hash.substring(1);
+            if (id.startsWith('post-')) {
+                const el = document.getElementById(id);
+                if (el) {
+                    setTimeout(() => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        // Add temporary highlight effect
+                        el.classList.add(`ring-2`, `ring-${accentColor}-500`);
+                        setTimeout(() => {
+                            el.classList.remove(`ring-2`, `ring-${accentColor}-500`);
+                        }, 2000);
+                    }, 300);
+                }
+            }
+        }
+    }, [isLoading, posts, accentColor, location.hash]);
+
+
     // ============================================================================
     // ОБРОБНИКИ ДІЙ (HANDLERS)
     // ============================================================================
@@ -229,12 +252,11 @@ export const Home: React.FC = () => {
 
             setPosts([newPost, ...posts]);
 
-            // Очищаємо форму і згортаємо її
             setNewPostText("");
             setIsCreating(false);
         } catch (err) {
             console.error(err);
-            alert("Помилка при створенні поста. Можливо, сервер відхилив запит.");
+            alert("Error while creating post.");
         } finally {
             setIsSubmitting(false);
         }
@@ -528,7 +550,7 @@ export const Home: React.FC = () => {
                         const isLiked = likedPosts.has(post.id);
 
                         return (
-                            <div key={post.id} className="flex flex-col mb-4">
+                            <div key={post.id} id={`post-${post.id}`} className="flex flex-col mb-4 transition-all duration-500 rounded-2xl">
                                 {/* Назва групи акуратно НАД постом */}
                                 {post.groupName && (
                                     <Link to={`/groups/${post.groupId}`} className="w-fit mb-2 ml-2 z-10">
