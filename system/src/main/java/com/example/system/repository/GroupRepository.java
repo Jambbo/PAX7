@@ -14,7 +14,7 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
        SELECT g FROM Group g 
        WHERE (LOWER(g.name) LIKE LOWER(CONCAT('%', :name, '%')) 
            OR LOWER(g.description) LIKE LOWER(CONCAT('%', :description, '%'))) 
-       AND g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL
+       AND (g.privacy IS NULL OR g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL)
        ORDER BY g.id ASC
        LIMIT 5
        """)
@@ -30,13 +30,13 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
     boolean existsByIdAndOwnerId(Long groupId, String currentUserId);
 
-    @Query("SELECT g FROM Group g JOIN g.members m WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL AND m.id = :userId")
+    @Query("SELECT g FROM Group g JOIN g.members m WHERE (g.privacy IS NULL OR g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL) AND m.id = :userId")
     List<Group> findByMembers_Id(String userId);
 
     @Query("""
        SELECT g
        FROM Group g
-       WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL AND NOT EXISTS (
+       WHERE (g.privacy IS NULL OR g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL) AND NOT EXISTS (
            SELECT 1
            FROM g.members m
            WHERE m.id = :userId
@@ -44,6 +44,6 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
        """)
     List<Group> findGroupsUserNotMemberOf(String userId);
 
-    @Query("SELECT g FROM Group g WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL")
+    @Query("SELECT g FROM Group g WHERE g.privacy IS NULL OR g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL")
     List<Group> findAllVisibleGroups();
 }

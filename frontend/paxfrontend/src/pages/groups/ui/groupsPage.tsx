@@ -75,6 +75,7 @@ export const GroupsPage: React.FC = () => {
                 const token = localStorage.getItem("access_token");
 
                 const all = await fetchAllGroups();
+                console.log(all);
                 setAllGroupsCount(all.length);
 
                 if (token && token !== "undefined") {
