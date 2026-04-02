@@ -33,7 +33,7 @@ export const AuthCallback = () => {
                 grant_type: "authorization_code",
                 client_id: "pax-frontend",
                 code,
-                redirect_uri: "http://localhost:3000/auth/callback",
+                redirect_uri: `${window.location.origin}/auth/callback`,
                 code_verifier: codeVerifier,
             }),
         })

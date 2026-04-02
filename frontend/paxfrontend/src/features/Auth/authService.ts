@@ -1,9 +1,8 @@
 import {generatePKCE} from "./pkce";
 
-const KEYCLOAK_URL = "http://localhost:8080";
-const REALM = "pax";
+const KEYCLOAK_URL = "http://localhost:8080/realms/pax/protocol/openid-connect";
 const CLIENT_ID = "pax-frontend";
-const REDIRECT_URI = "http://localhost:3000/auth/callback";
+const REDIRECT_URI = `${window.location.origin}/auth/callback`;
 
 const getInfoFromToken = () => {
     const token = localStorage.getItem('access_token');
@@ -31,19 +30,19 @@ export async function login() {
     });
 
     window.location.href =
-        `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/auth?${params.toString()}`;
+        `${KEYCLOAK_URL}/auth?${params.toString()}`;
 }
 
 export function logout() {
+
+    const idToken = localStorage.getItem("id_token");
+    const logoutUrl = `${KEYCLOAK_URL}/logout?client_id=${CLIENT_ID}` +
+        `&post_logout_redirect_uri=${encodeURIComponent(window.location.origin)}`;
 
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("expires_at");
 
-
-    const logoutUrl = `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/logout` +
-        `?client_id=${CLIENT_ID}` +
-        `&post_logout_redirect_uri=${encodeURIComponent("http://localhost:3000")}`;
 
 
     window.location.href = logoutUrl;
