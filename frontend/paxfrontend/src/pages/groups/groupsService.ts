@@ -1,13 +1,11 @@
 const API_URL = "http://localhost:8081/api/v1/groups";
 
-// Описуємо Enum, щоб він збігався з Java GroupPrivacy
 export enum GroupPrivacy {
     PUBLIC = "PUBLIC",
     PRIVATE = "PRIVATE",
     HIDDEN = "HIDDEN"
 }
 
-// Тип, який ми отримуємо з бекенду (Read Dto)
 export interface Group {
     id: number;
     name: string;
@@ -17,11 +15,10 @@ export interface Group {
     ownerId?: string | number;
 }
 
-// Тип для створення (те, що ми передаємо в функцію)
 export interface CreateGroupDto {
     name: string;
     description: string;
-    groupPrivacy: GroupPrivacy; // Обов'язкове поле для вашого бекенду
+    groupPrivacy: GroupPrivacy;
     location?: string;
 }
 
@@ -109,7 +106,7 @@ export async function fetchUsersCount(): Promise<Number> {
 
 export async function joinGroup(groupId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Ви не авторизовані");
+    if (!token) throw new Error("You are not authorized");
 
     const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}/join`, {
         method: "POST",
@@ -120,7 +117,7 @@ export async function joinGroup(groupId: number): Promise<void> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося вступити в групу на сервері");
+        throw new Error("Failed to join community on server");
     }
 }
 export async function leaveGroup(groupId: number): Promise<void> {
@@ -131,21 +128,19 @@ export async function leaveGroup(groupId: number): Promise<void> {
     });
     if (!response.ok) throw new Error("Leave failed");
 }
-// 2. Створити нову групу
 export async function createGroup(data: any) {
     const token = localStorage.getItem("access_token");
 
-    // БУДУЄМО ОБ'ЄКТ ПІД JAVA DTO
     const payload = {
-        id: null,                      // Обов'язково null для створення
+        id: null,
         name: data.name,
-        description: data.description, // МАЄ БУТИ НЕ ПОРОЖНІМ
+        description: data.description,
         groupPrivacy: data.visibility ? data.visibility.toUpperCase() : "PUBLIC",
-        location: "Online",            // Додаємо дефолтне значення, щоб не було null
+        location: "Online",
         ownerId: null
     };
 
-    console.log("Реальний JSON, який летить на сервер:", payload);
+    console.log("Real JSON sent to server:", payload);
 
     const response = await fetch("http://localhost:8081/api/v1/groups", {
         method: "POST",
@@ -158,7 +153,7 @@ export async function createGroup(data: any) {
 
     if (!response.ok) {
         const errorDetails = await response.json().catch(() => ({}));
-        console.error("Сервер не прийняв запит:", errorDetails);
+        console.error("Server rejected request:", errorDetails);
         throw new Error("400 Bad Request");
     }
 
@@ -168,7 +163,7 @@ export async function createGroup(data: any) {
 
 export async function deleteGroup(groupId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Ви не авторизовані");
+    if (!token) throw new Error("You are not authorized");
 
     const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}`, {
         method: "DELETE",
@@ -178,14 +173,13 @@ export async function deleteGroup(groupId: number): Promise<void> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося видалити групу");
+        throw new Error("Failed to delete community");
     }
 }
 
 export async function updateGroup(groupId: number, data: any): Promise<Group> {
     const token = localStorage.getItem("access_token");
 
-    // Формуємо об'єкт точно під ваш GroupWriteDto
     const payload = {
         id: groupId,
         name: data.name,
@@ -206,7 +200,7 @@ export async function updateGroup(groupId: number, data: any): Promise<Group> {
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("Бекенд відхилив запит на оновлення. Деталі:", errorData);
+        console.error("Backend rejected update request. Details:", errorData);
         throw new Error("Failed to update group");
     }
 

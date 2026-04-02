@@ -49,7 +49,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional(readOnly = true)
     public List<Post> getAllPosts() {
-        return postRepository.findAll();
+        return postRepository.findAllVisiblePosts();
     }
 
     @Override

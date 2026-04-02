@@ -24,7 +24,6 @@ export const router = createBrowserRouter([
             { path: "trending", element: <TrendingPage /> },
             { path: "groups", element: <GroupsPage /> },
 
-            // ↓↓↓ ДОДАНО ОСЬ ЦЕЙ РЯДОК ↓↓↓
             { path: "groups/:id", element: <GroupDetailsPage /> },
 
             { path: "bookmarks", element: <BookmarksPage /> },

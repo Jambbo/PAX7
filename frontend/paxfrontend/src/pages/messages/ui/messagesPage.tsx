@@ -15,7 +15,6 @@ interface ChatMessage {
     createdAt?: string;
 }
 
-// Масив з популярними емодзі (понад 60 штук)
 const EMOJIS = [
     "😀", "😃", "😄", "😁", "😆", "😅", "😂", "🤣", "🥲", "☺️",
     "😊", "😇", "🙂", "🙃", "😉", "😌", "😍", "🥰", "😘", "😗",
@@ -27,14 +26,10 @@ const EMOJIS = [
 ];
 
 export const MessagesPage: React.FC = () => {
-    // =========================================================================
-    // UI СТЕЙТИ ТА ЛОГІКА ДИЗАЙНУ
-    // =========================================================================
     const [accentColor, setAccentColor] = useState(() => localStorage.getItem('site_accent_color') || 'purple');
     const [searchQuery, setSearchQuery] = useState("");
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Стейт та реф для меню емодзі
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
     const emojiContainerRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +43,6 @@ export const MessagesPage: React.FC = () => {
         };
     }, []);
 
-    // Закриття меню емодзі при кліку поза ним
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (emojiContainerRef.current && !emojiContainerRef.current.contains(event.target as Node)) {
@@ -63,9 +57,6 @@ export const MessagesPage: React.FC = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
 
-    // =========================================================================
-    // ОРИГІНАЛЬНА ЛОГІКА
-    // =========================================================================
     const [users, setUsers] = useState<User[]>([]);
     const [conversationUsers, setConversationUsers] = useState<User[]>([]);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -81,11 +72,29 @@ export const MessagesPage: React.FC = () => {
     const [currentUserId, setCurrentUserId] = useState<string>("");
 
     const [conversationMap, setConversationMap] = useState<Record<string, string>>({});
+    const [friends, setFriends] = useState<User[]>([]);
 
     const getUserIdFromToken = () => {
-        const token = localStorage.getItem("access_token")!;
+        const token = localStorage.getItem("access_token");
+        if (!token || token === "undefined") return "";
         const payload = JSON.parse(atob(token.split(".")[1]));
         return payload.sub;
+    };
+
+    const fetchFriends = () => {
+        fetch("http://localhost:8081/api/v1/users/me/friends", {
+            headers: {
+                Authorization: `Bearer ${localStorage.getItem("access_token")}`
+            }
+        })
+            .then(async res => {
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                if (Array.isArray(data)) setFriends(data);
+            })
+            .catch(err => console.error("Error fetching friends:", err));
     };
 
     const fetchConversations = (userId: string) => {
@@ -127,11 +136,16 @@ export const MessagesPage: React.FC = () => {
     };
 
     useEffect(() => {
-        if (currentUserId) fetchConversations(currentUserId);
+        if (currentUserId) {
+            fetchConversations(currentUserId);
+            fetchFriends();
+        }
     }, [currentUserId]);
 
     useEffect(() => {
-        const token = localStorage.getItem("access_token")!;
+        const token = localStorage.getItem("access_token");
+        if (!token || token === "undefined") return;
+
         const userId = getUserIdFromToken();
         setCurrentUserId(userId);
 
@@ -215,7 +229,7 @@ export const MessagesPage: React.FC = () => {
         });
 
         setInput("");
-        setShowEmojiPicker(false); // Закриваємо емодзі після відправки
+        setShowEmojiPicker(false);
     };
 
     const activeConversationId = selectedUser ? conversationMap[selectedUser.id] : null;
@@ -266,17 +280,26 @@ export const MessagesPage: React.FC = () => {
         scrollToBottom();
     }, [filteredMessages, selectedUser]);
 
-    const displayedUsers = users;
+    const allUsersList = Array.from(new Map([...friends, ...conversationUsers].map(u => [u.id, u])).values());
+    const displayedUsers = searchQuery.trim() ? users : allUsersList;
 
-    const allSidebarUsers = [...conversationUsers];
-    if (selectedUser && !allSidebarUsers.some(u => u.id === selectedUser.id)) {
-        allSidebarUsers.unshift(selectedUser);
+    const token = localStorage.getItem("access_token");
+    const isAuthenticated = token && token !== "undefined";
+
+    if (!isAuthenticated) {
+        return (
+            <div className="max-w-4xl mx-auto py-20 text-center">
+                <MessageSquare size={64} className="mx-auto text-gray-300 mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Sign in to view messages</h2>
+                <p className="text-gray-500">You need to be logged in to view and send messages.</p>
+            </div>
+        );
     }
 
     return (
-        <div className="max-w-6xl mx-auto h-[calc(100vh-8rem)] min-h-[600px] flex bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm overflow-hidden animate-fadeIn">
+        <div className="max-w-7xl mx-auto h-[85vh] flex gap-6 pb-6">
 
-            {/* ================= ЛІВА ПАНЕЛЬ ================= */}
+            
             <div className="w-full md:w-80 lg:w-96 flex flex-col border-r border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50">
                 <div className="h-16 px-4 flex items-center border-b border-gray-200 dark:border-gray-800 shrink-0">
                     <h2 className="text-xl font-bold text-gray-900 dark:text-white flex-1">Messages</h2>
@@ -323,8 +346,8 @@ export const MessagesPage: React.FC = () => {
                 </div>
 
                 <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                    {allSidebarUsers.length > 0 ? (
-                        allSidebarUsers.map((user) => {
+                    {allUsersList.length > 0 ? (
+                        allUsersList.map((user) => {
                             const isSelected = selectedUser?.id === user.id;
                             const avatarLetter = user.username ? user.username.charAt(0).toUpperCase() : '?';
 
@@ -364,7 +387,7 @@ export const MessagesPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* ================= ПРАВА ПАНЕЛЬ (ЧАТ) ================= */}
+            
             <div className="flex-1 flex flex-col bg-white dark:bg-gray-900 relative">
                 {!selectedUser ? (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 dark:text-gray-600 bg-gray-50/30 dark:bg-gray-900/30">
@@ -427,11 +450,11 @@ export const MessagesPage: React.FC = () => {
                             <div ref={messagesEndRef} />
                         </div>
 
-                        {/* ================= ПОЛЕ ВВОДУ З ЕМОДЗІ ================= */}
+                        
                         <div className="p-4 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shrink-0" ref={emojiContainerRef}>
                             <div className="flex items-end gap-2 max-w-4xl mx-auto relative">
 
-                                {/* ПАНЕЛЬ ЕМОДЗІ */}
+                                
                                 {showEmojiPicker && (
                                     <div className="absolute bottom-full right-16 mb-2 w-72 sm:w-80 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3 z-50 animate-fadeIn">
                                         <div className="grid grid-cols-6 sm:grid-cols-8 gap-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 pr-1">
@@ -501,3 +524,4 @@ export const MessagesPage: React.FC = () => {
         </div>
     );
 };
+

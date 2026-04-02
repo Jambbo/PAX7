@@ -4,6 +4,7 @@ public enum GroupPrivacy {
 
     PUBLIC,
     PRIVATE,
-    CLOSED
+    CLOSED,
+    WALL
 
 }

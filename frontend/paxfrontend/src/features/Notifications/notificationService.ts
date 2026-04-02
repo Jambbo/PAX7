@@ -20,12 +20,12 @@ export interface NotificationReadResponseDto {
 
 export const fetchNotifications = async (page = 0, size = 20) => {
     const response = await apiClient.get(`/api/v1/notifications?page=${page}&size=${size}`);
-    return response.data; // Page<NotificationReadResponseDto>
+    return response.data;
 };
 
 export const syncNotifications = async (lastId = 0) => {
     const response = await apiClient.get(`/api/v1/notifications/sync?lastId=${lastId}`);
-    return response.data; // List<NotificationReadResponseDto>
+    return response.data;
 };
 
 export const markAsRead = async (id: number) => {

@@ -27,8 +27,8 @@ services:
       POSTGRES_USER: ${KC_DB_USERNAME}
       POSTGRES_PASSWORD: ${KC_DB_PASSWORD}
       POSTGRES_DB: keycloak
-#    env_file:
-#      - ./system/.env
+    env_file:
+      - ./system/.env
     ports:
       - "5433:5432"
     healthcheck:

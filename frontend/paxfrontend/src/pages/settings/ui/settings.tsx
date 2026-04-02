@@ -4,22 +4,17 @@ import {
     Camera, Save, Moon, Sun, Monitor, Loader2, CheckCircle, AlertCircle, X
 } from 'lucide-react';
 
-// ПЕРЕВІР ШЛЯХИ!
 import { fetchCurrentUser, updateUser } from '../../profile/userService';
 import { AuthModal } from '../../../widgets/AuthModal/AuthModal';
 
 export const SettingsPage: React.FC = () => {
-    // --- СТЕЙТИ АВТОРИЗАЦІЇ ---
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
-    // --- СТЕЙТИ НАВІГАЦІЇ ТА UI ---
     const [activeTab, setActiveTab] = useState('appearance');
 
-    // --- СТЕЙТ ДЛЯ ТОАСТ-СПОВІЩЕНЬ ---
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // --- СТЕЙТИ ДАНИХ ЮЗЕРА ---
     const [userData, setUserData] = useState<any>({
         username: "",
         email: "",
@@ -31,7 +26,6 @@ export const SettingsPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
-    // --- ЛОГІКА ТЕМ ТА КОЛЬОРІВ ---
     const [selectedTheme, setTheme] = useState(() => {
         return localStorage.getItem('site_theme') || 'Dark';
     });
@@ -45,7 +39,6 @@ export const SettingsPage: React.FC = () => {
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
 
-    // Застосування теми
     useEffect(() => {
         localStorage.setItem('site_theme', selectedTheme);
         const root = window.document.documentElement;
@@ -61,13 +54,11 @@ export const SettingsPage: React.FC = () => {
         }
     }, [selectedTheme]);
 
-    // Застосування акцентного кольору
     useEffect(() => {
         localStorage.setItem('site_accent_color', accentColor);
         window.dispatchEvent(new Event('accent-color-change'));
     }, [accentColor]);
 
-    // --- ЗАВАНТАЖЕННЯ ДАНИХ ЮЗЕРА АБО РЕЖИМ ГОСТЯ ---
     useEffect(() => {
         const token = localStorage.getItem("access_token");
         const hasToken = token && token !== "undefined";
@@ -75,13 +66,11 @@ export const SettingsPage: React.FC = () => {
         setIsLoggedIn(hasToken);
 
         if (!hasToken) {
-            // Якщо це гість, залишаємо на Appearance
             setActiveTab('appearance');
             setIsLoading(false);
             return;
         }
 
-        // Якщо юзер авторизований
         setActiveTab('profile');
         const loadSettings = async () => {
             setIsLoading(true);
@@ -96,7 +85,7 @@ export const SettingsPage: React.FC = () => {
                 });
                 setCurrentUserId(data.id);
             } catch (err) {
-                console.error("Помилка завантаження налаштувань:", err);
+                console.error("Error loading settings:", err);
                 setIsLoggedIn(false);
                 setActiveTab('appearance');
             } finally {
@@ -124,16 +113,14 @@ export const SettingsPage: React.FC = () => {
         }
     };
 
-    // ОБРОБНИК КЛІКІВ ПО ВКЛАДКАХ
     const handleTabClick = (tabId: string) => {
         if (!isLoggedIn && tabId !== 'appearance') {
-            setIsAuthModalOpen(true); // Показуємо модалку для гостей
+            setIsAuthModalOpen(true);
             return;
         }
         setActiveTab(tabId);
     };
 
-    // ==================== РЕНДЕРИНГ ВКЛАДОК ====================
 
     const renderProfileTab = () => (
         <div className="space-y-6 animate-fadeIn">
@@ -411,7 +398,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col md:flex-row gap-8">
-                    {/* Sidebar */}
+                    
                     <div className="w-full md:w-64 shrink-0">
                         <div className={`${bgMain} border border-gray-200 dark:border-gray-800 rounded-2xl p-2 shadow-sm sticky top-24`}>
                             <nav className="space-y-1">
@@ -422,7 +409,6 @@ export const SettingsPage: React.FC = () => {
                                     { id: 'privacy', icon: Shield, label: 'Privacy & Security' },
                                     { id: 'preferences', icon: Globe, label: 'Preferences' },
                                 ].map((item) => {
-                                    // Перевірка: чи заблокована вкладка для гостя
                                     const isRestricted = !isLoggedIn && item.id !== 'appearance';
 
                                     return (
@@ -445,7 +431,7 @@ export const SettingsPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Content Area */}
+                    
                     <div className="flex-1">
                         <div className={`${bgMain} border border-gray-200 dark:border-gray-800 rounded-2xl p-6 md:p-8 shadow-sm`}>
                             {activeTab === 'profile' && renderProfileTab()}
@@ -455,7 +441,7 @@ export const SettingsPage: React.FC = () => {
                             {activeTab === 'preferences' && renderPreferencesTab()}
                         </div>
 
-                        {/* Кнопки збереження показуються ТІЛЬКИ авторизованим юзерам */}
+                        
                         {isLoggedIn && (
                             <div className="mt-6 flex justify-end gap-3">
                                 <button className={`px-6 py-3 bg-white border border-gray-200 hover:bg-gray-50 dark:bg-gray-800/50 dark:border-transparent dark:hover:bg-gray-700 dark:text-white ${textMain} rounded-lg transition-colors font-medium`}>
@@ -475,7 +461,7 @@ export const SettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* === МОДАЛКА АВТОРИЗАЦІЇ === */}
+            
             <AuthModal
                 isOpen={isAuthModalOpen}
                 onClose={() => setIsAuthModalOpen(false)}
@@ -483,7 +469,7 @@ export const SettingsPage: React.FC = () => {
                 message="You need to log in to your account to change these settings."
             />
 
-            {/* === СПЛИВАЮЧЕ ВІКНО (TOAST) === */}
+            
             {toast && (
                 <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl animate-fadeIn border ${
                     toast.type === 'success'

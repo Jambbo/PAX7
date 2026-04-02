@@ -7,7 +7,6 @@ export const Search = () => {
     const inputRef = useRef<HTMLInputElement | null>(null)
     const [inputValue, setInputValue] = useState<string>('')
 
-    // --- ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -25,7 +24,6 @@ export const Search = () => {
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
 
     useEffect(()=>{
         if(active && inputRef.current){
@@ -75,12 +73,11 @@ export const Search = () => {
                 onBlur={() => setActive(false)}
             />
 
-            {/* Search icon (clickable when closed) */}
+            
             {!active && (
                 <button
                     type='button'
                     onClick={active ? resetInput : () => setActive(!active)}
-                    // Тут ми використовуємо динамічний колір для іконки
                     className={`absolute left-0 w-[43px] h-[43px] flex items-center justify-center text-${accentColor}-600 hover:text-${accentColor}-800 transition-colors`}
                     aria-label="Open search bar"
                 >

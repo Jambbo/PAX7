@@ -17,16 +17,20 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
     boolean existsByIdAndOwnerId(Long groupId, String currentUserId);
 
+    @Query("SELECT g FROM Group g JOIN g.members m WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL AND m.id = :userId")
     List<Group> findByMembers_Id(String userId);
 
     @Query("""
        SELECT g
        FROM Group g
-       WHERE NOT EXISTS (
+       WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL AND NOT EXISTS (
            SELECT 1
            FROM g.members m
            WHERE m.id = :userId
        )
        """)
     List<Group> findGroupsUserNotMemberOf(String userId);
+
+    @Query("SELECT g FROM Group g WHERE g.privacy <> com.example.system.domain.model.GroupPrivacy.WALL")
+    List<Group> findAllVisibleGroups();
 }

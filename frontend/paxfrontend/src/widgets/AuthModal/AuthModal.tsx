@@ -15,7 +15,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                                         title = "Authentication Required",
                                                         message = "You need to log in to your account to perform this action."
                                                     }) => {
-    // Автоматично підтягуємо колір сайту, щоб модалка завжди була в стилі
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -30,7 +29,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         };
     }, []);
 
-    // Закриття по клавіші Escape
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -44,11 +42,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     return (
         <div
             className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
-            onClick={onClose} // Закриває модалку при кліку на темний фон
+            onClick={onClose}
         >
             <div
                 className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-zoomIn relative"
-                onClick={(e) => e.stopPropagation()} // Запобігає закриттю при кліку на саме вікно
+                onClick={(e) => e.stopPropagation()}
             >
                 <button
                     onClick={onClose}

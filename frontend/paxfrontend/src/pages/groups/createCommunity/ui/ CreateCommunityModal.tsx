@@ -40,7 +40,6 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                                                                         isSubmitting = false,
                                                                         serverError = null,
                                                                     }) => {
-    // --- ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -58,7 +57,6 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
 
     const [form, setForm] = useState<CreateCommunityFormData>({
         name: "",
@@ -70,7 +68,6 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
 
     const [nameError, setNameError] = useState<string | null>(null);
 
-    // Reset form when modal opens
     useEffect(() => {
         if (isOpen) {
             setForm({
@@ -160,7 +157,6 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
     ] as const;
 
     return (
-        // Backdrop з високим Z-Index та розмиттям
         <div
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn"
             onClick={onClose}
@@ -169,7 +165,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                 className="w-full max-w-2xl rounded-2xl bg-white dark:bg-gray-900 p-6 shadow-2xl overflow-y-auto max-h-[90vh] transition-all border border-gray-200 dark:border-gray-800"
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
+                
                 <div className="mb-6 flex items-center justify-between">
                     <div>
                         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Create Community</h2>
@@ -186,7 +182,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* NAME */}
+                    
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Community name <span className="text-red-500">*</span>
@@ -212,7 +208,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         )}
                     </div>
 
-                    {/* DESCRIPTION */}
+                    
                     <div className="space-y-1.5">
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                         <textarea
@@ -228,7 +224,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         />
                     </div>
 
-                    {/* CATEGORY — GRID */}
+                    
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Category</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 pr-1">
@@ -256,7 +252,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         </div>
                     </div>
 
-                    {/* VISIBILITY */}
+                    
                     <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Visibility</label>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -298,7 +294,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         </div>
                     </div>
 
-                    {/* NSFW Checkbox */}
+                    
                     <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                         <div className="relative flex items-center">
                             <input
@@ -315,7 +311,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         </label>
                     </div>
 
-                    {/* SERVER ERROR */}
+                    
                     {serverError && (
                         <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
                             <span className="w-1.5 h-1.5 rounded-full bg-red-500"/>
@@ -323,7 +319,7 @@ export const CreateCommunityModal: FC<CreateCommunityModalProps> = ({
                         </div>
                     )}
 
-                    {/* BUTTONS */}
+                    
                     <div className="pt-2 flex justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
                         <button
                             type="button"

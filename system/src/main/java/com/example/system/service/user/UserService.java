@@ -39,4 +39,17 @@ public interface UserService {
     List<User> search(String query, String userId);
 
     List<Post> getLikedPostsByUserId(String userId);
+
+    void sendFriendRequest(String senderId, String recipientId);
+    void acceptFriendRequest(String recipientId, String senderId, Long notificationId);
+    void declineFriendRequest(String recipientId, Long notificationId);
+    List<User> getUserFriends(String userId);
+    List<User> getFriendRequests(String userId);
+    String getFriendshipStatus(String myId, String otherUserId);
+    List<User> getOutgoingFriendRequests(String userId);
+    void removeFriend(String myId, String friendId);
+
+    Long getOrCreateUserWallGroup(String userId);
+
+    List<User> getUsersByGroupId(Long groupId);
 }

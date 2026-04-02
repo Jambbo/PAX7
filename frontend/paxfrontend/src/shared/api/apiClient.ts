@@ -28,8 +28,6 @@ async function fetchClient(endpoint: string, { data, ...customConfig }: { data?:
         const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
         if (response.status === 401) {
-            // Optional: Implement logout or token refresh trigger here
-            // console.error('Unauthorized response');
         }
 
         let responseData;

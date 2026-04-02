@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; // ДОДАНО ІМПОРТ useNavigate
+import { useNavigate } from 'react-router-dom';
 import {
     Heart, Eye, MessageSquare, Bookmark, Edit3, Trash2, Loader2,
     Send, ThumbsDown, AlertTriangle, X, CheckCircle, AlertCircle } from 'lucide-react';
 
-// ШЛЯХ ДО ТВІЙ AUTH MODAL (Уточни його, якщо він відрізняється)
 import { AuthModal } from '../../widgets/AuthModal/AuthModal';
 
 import {
@@ -48,10 +47,8 @@ export const PostItem: React.FC<PostItemProps> = ({
                                                   }) => {
     const navigate = useNavigate();
 
-    // === СТЕЙТ ДЛЯ TOAST (СПОconvertВІЩЕННЯ) ===
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-    // Автоматичне зникнення через 3 секунди
     useEffect(() => {
         if (toast) {
             const timer = setTimeout(() => setToast(null), 3000);
@@ -59,13 +56,11 @@ export const PostItem: React.FC<PostItemProps> = ({
         }
     }, [toast]);
 
-    // --- СТЕНИ ДЛЯ САМОГО ПОСТА ---
     const [isEditing, setIsEditing] = useState(false);
     const [editPostText, setEditPostText] = useState(post.text);
     const [isUpdatingPost, setIsUpdatingPost] = useState(false);
     const [isTextExpanded, setIsTextExpanded] = useState(false);
 
-    // --- СТЕНИ ДЛЯ КОМЕНТАРІВ ---
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -76,25 +71,21 @@ export const PostItem: React.FC<PostItemProps> = ({
     const [editCommentText, setEditCommentText] = useState("");
     const [isUpdatingComment, setIsUpdatingComment] = useState(false);
 
-    // Ініціалізуємо стан реакцій на коментарі з пам'яті браузера
     const [commentInteractions, setCommentInteractions] = useState<Record<number, 'LIKE' | 'DISLIKE'>>(() => {
         const saved = localStorage.getItem('pax_comment_interactions');
         return saved ? JSON.parse(saved) : {};
     });
 
-    // Щоразу, коли реакції змінюються, зберігаємо їх у пам'ять браузера
     useEffect(() => {
         localStorage.setItem('pax_comment_interactions', JSON.stringify(commentInteractions));
     }, [commentInteractions]);
 
-    // --- СТЕНИ ДЛЯ МОДАЛОК (Авторизація та Видалення) ---
     const [authModal, setAuthModal] = useState({ isOpen: false, title: "", message: "" });
     const [deleteCommentId, setDeleteCommentId] = useState<number | null>(null);
     const [isDeletingComment, setIsDeletingComment] = useState(false);
 
     const canEditOrDelete = isPageOwner || post.authorId === currentUserId;
 
-    // Перевірка авторизації
     const requireAuth = (title: string, message: string) => {
         if (!currentUserId) {
             setAuthModal({ isOpen: true, title, message });
@@ -103,7 +94,6 @@ export const PostItem: React.FC<PostItemProps> = ({
         return true;
     };
 
-    // Обгортка для лайку поста (щоб показати AuthModal)
     const handlePostLike = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (requireAuth("Authentication Required", "You need to log in to like this post.")) {
@@ -111,20 +101,16 @@ export const PostItem: React.FC<PostItemProps> = ({
         }
     };
 
-    // Обгортка для збереження поста (щоб показати AuthModal)
     const handlePostSave = (e: React.MouseEvent) => {
         e.stopPropagation();
 
         const token = localStorage.getItem("access_token");
 
-        // Перевіряємо авторизацію
         if (!token || token === "undefined") {
-            // ЯКЩО НЕ АВТОРИЗОВАНИЙ — ВІДКРИВАЄМО МОДАЛКУ
             setIsAuthModalOpen(true);
             return;
         }
 
-        // Якщо авторизований — виконуємо збереження
         if (onSaveToggle) {
             onSaveToggle(post.id, e);
             setToast({
@@ -142,15 +128,12 @@ export const PostItem: React.FC<PostItemProps> = ({
             await onEditSave(post.id, editPostText);
             setIsEditing(false);
         } catch (err) {
-            console.error("Помилка збереження поста", err);
+            console.error("Error saving post", err);
         } finally {
             setIsUpdatingPost(false);
         }
     };
 
-    // ==========================================
-    // ОБРОБНИКИ КОМЕНТАРІВ
-    // ==========================================
 
     const toggleComments = async (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -161,7 +144,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                 const fetchedComments = await fetchComments(post.id);
                 setComments(fetchedComments.reverse());
             } catch (err) {
-                console.error("Помилка завантаження коментарів", err);
+                console.error("Error loading comments", err);
             } finally {
                 setIsLoadingComments(false);
             }
@@ -185,13 +168,11 @@ export const PostItem: React.FC<PostItemProps> = ({
         }
     };
 
-    // Запускає модалку видалення
     const handleDeleteCommentClick = (commentId: number, e: React.MouseEvent) => {
         e.stopPropagation();
         setDeleteCommentId(commentId);
     };
 
-    // Підтвердження видалення
     const confirmDeleteComment = async () => {
         if (deleteCommentId === null) return;
         setIsDeletingComment(true);
@@ -200,7 +181,7 @@ export const PostItem: React.FC<PostItemProps> = ({
             setComments(comments.filter(c => c.id !== deleteCommentId));
             setDeleteCommentId(null);
         } catch (err) {
-            console.error("Помилка видалення коментаря", err);
+            console.error("Error deleting comment", err);
         } finally {
             setIsDeletingComment(false);
         }
@@ -221,7 +202,7 @@ export const PostItem: React.FC<PostItemProps> = ({
             setComments(comments.map(c => c.id === commentId ? updatedComment : c));
             setEditingCommentId(null);
         } catch (err) {
-            console.error("Помилка оновлення коментаря", err);
+            console.error("Error updating comment", err);
         } finally {
             setIsUpdatingComment(false);
         }
@@ -248,7 +229,7 @@ export const PostItem: React.FC<PostItemProps> = ({
             }
             setComments(comments.map(c => c.id === commentId ? updatedComment : c));
         } catch (err) {
-            console.error("Помилка лайку коментаря", err);
+            console.error("Error liking comment", err);
         }
     };
 
@@ -273,7 +254,7 @@ export const PostItem: React.FC<PostItemProps> = ({
             }
             setComments(comments.map(c => c.id === commentId ? updatedComment : c));
         } catch (err) {
-            console.error("Помилка дизлайку коментаря", err);
+            console.error("Error disliking comment", err);
         }
     };
 
@@ -303,7 +284,6 @@ export const PostItem: React.FC<PostItemProps> = ({
         );
     };
 
-    // Навігація на сторінку профілю
     const handleProfileClick = (e: React.MouseEvent, userId: string | undefined) => {
         e.stopPropagation();
         if (userId) {
@@ -317,9 +297,9 @@ export const PostItem: React.FC<PostItemProps> = ({
                 isTextExpanded ? `ring-1 ring-${accentColor}-500/50 bg-gray-50 dark:bg-gray-800/50` : ''
             }`}
         >
-            {/* Шапка поста */}
+            
             <div className="flex items-start justify-between mb-3">
-                {/* Обернули аватар і ім'я в div з onClick для переходу */}
+                
                 <div
                     className="flex items-center gap-3 cursor-pointer group/author hover:opacity-80 transition-opacity"
                     onClick={(e) => handleProfileClick(e, post.authorId)}
@@ -338,9 +318,11 @@ export const PostItem: React.FC<PostItemProps> = ({
 
                 {canEditOrDelete && (
                     <div className="flex items-center gap-2">
-                        <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsCommentsOpen(false); }} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700 dark:text-gray-300 transition-colors" title="Edit Post">
-                            <Edit3 size={18} />
-                        </button>
+                        {String(post.authorId) === String(currentUserId) && (
+                            <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); setIsCommentsOpen(false); }} className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700 dark:text-gray-300 transition-colors" title="Edit Post">
+                                <Edit3 size={18} />
+                            </button>
+                        )}
                         <button onClick={(e) => { e.stopPropagation(); onDeleteClick(post.id); }} className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/10 dark:hover:bg-red-900/30 dark:text-red-400 transition-colors" title="Delete Post">
                             <Trash2 size={18} />
                         </button>
@@ -348,10 +330,10 @@ export const PostItem: React.FC<PostItemProps> = ({
                 )}
             </div>
 
-            {/* Картинки */}
+            
             {renderImages(post.images)}
 
-            {/* Текст поста */}
+            
             <div className="w-full mb-4">
                 {isEditing ? (
                     <div onClick={e => e.stopPropagation()} className="mt-2 w-full animate-fadeIn">
@@ -374,8 +356,8 @@ export const PostItem: React.FC<PostItemProps> = ({
                 )}
             </div>
 
-            {/* Панель взаємодії */}
-            {/* Панель взаємодії */}
+            
+            
             <div className="flex items-center gap-6 pt-4 border-t border-gray-100 dark:border-gray-700 text-gray-500">
                 <button
                     onClick={handlePostLike}
@@ -402,7 +384,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                     <Bookmark size={18} className={isSaved ? "fill-current" : ""} />
                 </button>
 
-                {/* === МОДАЛКА АВТОРИЗАЦІЇ === */}
+                
                 <AuthModal
                     isOpen={isAuthModalOpen}
                     onClose={() => setIsAuthModalOpen(false)}
@@ -410,7 +392,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                     message="You need to be logged in to save this post to your bookmarks."
                 />
 
-                {/* === СПЛИВАЮЧЕ ВІКНО (TOAST) === */}
+                
                 {toast && (
                     <div className={`fixed bottom-6 right-6 z-[999] flex items-center gap-3 px-5 py-4 rounded-xl shadow-2xl animate-fadeIn border ${
                         toast.type === 'success'
@@ -428,7 +410,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                     </div>
                 )}
             </div>
-            {/* СЕКЦІЯ КОМЕНТАРІВ */}
+            
             {isCommentsOpen && (
                 <div className="pt-5 mt-5 border-t border-gray-200 dark:border-gray-700 animate-fadeIn" onClick={e => e.stopPropagation()}>
 
@@ -476,7 +458,7 @@ export const PostItem: React.FC<PostItemProps> = ({
 
                                 return (
                                     <div key={comment.id} className="flex gap-3 group/comment">
-                                        {/* Аватар коментатора (клікабельний) */}
+                                        
                                         <div
                                             className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 flex-shrink-0 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer hover:opacity-80 transition-opacity"
                                             onClick={(e) => handleProfileClick(e, comment.authorId)}
@@ -487,7 +469,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                                         <div className="flex-1">
                                             <div className="bg-gray-100 dark:bg-gray-800/60 rounded-2xl rounded-tl-sm p-3 relative shadow-sm">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    {/* Ім'я коментатора (клікабельне) */}
+                                                    
                                                     <span
                                                         className={`font-bold text-[13px] text-gray-900 dark:text-white cursor-pointer hover:text-${accentColor}-600 dark:hover:text-${accentColor}-400 transition-colors`}
                                                         onClick={(e) => handleProfileClick(e, comment.authorId)}
@@ -547,7 +529,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                 </div>
             )}
 
-            {/* МОДАЛКА АВТОРИЗАЦІЇ (якщо юзер не ввійшов) */}
+            
             <AuthModal
                 isOpen={authModal.isOpen}
                 onClose={() => setAuthModal({ ...authModal, isOpen: false })}
@@ -555,7 +537,7 @@ export const PostItem: React.FC<PostItemProps> = ({
                 message={authModal.message}
             />
 
-            {/* МОДАЛКА ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ КОМЕНТАРЯ (В стилі AuthModal) */}
+            
             {deleteCommentId !== null && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" onClick={() => setDeleteCommentId(null)}>
                     <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-zoomIn relative" onClick={e => e.stopPropagation()}>

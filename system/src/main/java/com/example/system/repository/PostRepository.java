@@ -19,11 +19,14 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     @Query("SELECT p FROM Post p WHERE p.group.id = :groupId ORDER BY p.createdAt DESC")
     List<Post> findByGroupIdOrderByCreatedAtDesc(@Param("groupId") Long groupId);
 
-    @Query("SELECT p FROM Post p ORDER BY p.views DESC")
+    @Query("SELECT p FROM Post p WHERE p.group IS NULL OR p.group.privacy <> com.example.system.domain.model.GroupPrivacy.WALL ORDER BY p.views DESC")
     List<Post> findTopByViews();
 
-    @Query("SELECT p FROM Post p ORDER BY p.likes DESC")
+    @Query("SELECT p FROM Post p WHERE p.group IS NULL OR p.group.privacy <> com.example.system.domain.model.GroupPrivacy.WALL ORDER BY p.likes DESC")
     List<Post> findTopByLikes();
+
+    @Query("SELECT p FROM Post p WHERE p.group IS NULL OR p.group.privacy <> com.example.system.domain.model.GroupPrivacy.WALL ORDER BY p.createdAt DESC")
+    List<Post> findAllVisiblePosts();
 
     boolean existsByIdAndAuthorId(Long postId, String currentUserId);
 
