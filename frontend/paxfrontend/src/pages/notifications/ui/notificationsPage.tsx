@@ -111,8 +111,8 @@ const typeMeta: Record<
 
 export const NotificationsPage: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const notificationsRaw = useSelector((state: RootState) => state.notifications.items);
-    const unreadCount = useSelector((state: RootState) => state.notifications.unreadCount);
+    const notificationsRaw = useSelector((state: RootState) => state.notifications?.items || []);
+    const unreadCount = useSelector((state: RootState) => state.notifications?.unreadCount || 0);
 
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';

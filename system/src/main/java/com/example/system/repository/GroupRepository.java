@@ -9,6 +9,8 @@ import java.util.List;
 
 public interface GroupRepository extends JpaRepository<Group, Long> {
 
+    List<Group> findTop5ByNameContainingIgnoreCaseOrDescriptionContainingIgnoreCase(String name, String description);
+
     List<Group> findByOwnerId(String ownerId);
 
     List<Group> findByPrivacy(GroupPrivacy privacy);

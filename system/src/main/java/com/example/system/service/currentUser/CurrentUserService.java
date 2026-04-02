@@ -4,6 +4,8 @@ import com.example.system.domain.model.User;
 import com.example.system.domain.model.UserStatus;
 import com.example.system.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,7 @@ public class CurrentUserService {
     private final UserRepository userRepository;
 
     public String getCurrentUserId() {
-        return org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication().getName();
+        return SecurityContextHolder.getContext().getAuthentication().getName();
     }
 
     @Transactional
@@ -29,7 +31,7 @@ public class CurrentUserService {
 
         try {
             return createUserFromJwt(jwt);
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+        } catch (DataIntegrityViolationException e) {
             return userRepository.findById(userId).orElseThrow();
         }
     }

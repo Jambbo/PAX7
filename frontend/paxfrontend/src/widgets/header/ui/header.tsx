@@ -48,10 +48,8 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
 
     return (
         <header className="fixed z-50 top-0 w-full h-16 bg-white dark:bg-gray-950 text-gray-900 dark:text-white shadow-lg transition-colors duration-300">
-            
             <div className="px-6 h-full flex items-center justify-between">
 
-                
                 <Link
                     to="/"
                     className={`text-4xl font-bold bg-gradient-to-r from-${accentColor}-600 to-indigo-600 bg-clip-text text-transparent ml-16`}
@@ -59,15 +57,12 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                     PAX
                 </Link>
 
-                
                 <div className="md:block hidden flex-1 ml-48 mr-auto items-center">
                     <Search />
                 </div>
 
-                
                 <div className="hidden md:flex space-x-3 items-center">
 
-                    
                     {!isAuthenticated && (
                         <>
                             <Link
@@ -87,7 +82,6 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                         </>
                     )}
 
-                    
                     {isAuthenticated && (
                         <div className="relative" ref={dropdownRef}>
                             <button
