@@ -5,7 +5,7 @@ let client: Client | null = null;
 export const connectSocket = (token: string, onMessage: (msg:any)=>void) => {
 
     client = new Client({
-        brokerURL: "ws://localhost:8081/ws",
+        brokerURL: `${import.meta.env.VITE_WS_URL}/ws`,
         connectHeaders: {
             Authorization: `Bearer ${token}`
         },

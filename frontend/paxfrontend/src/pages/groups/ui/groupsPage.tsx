@@ -89,7 +89,7 @@ export const GroupsPage: React.FC = () => {
                 setTotalMembersCount(membersCount);
 
                 try {
-                    const postsResponse = await fetch(`http://localhost:8081/api/v1/posts/all?t=${new Date().getTime()}`);
+                    const postsResponse = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/posts/all?t=${new Date().getTime()}`);
                     if (postsResponse.ok) {
                         const allPostsData = await postsResponse.json();
                         setTotalPostsCount(allPostsData.length);
@@ -138,7 +138,7 @@ export const GroupsPage: React.FC = () => {
                         return;
                     }
                     try {
-                        const ownerRes = await fetch(`http://localhost:8081/api/v1/groups/owner/${currentUserId}`, {
+                        const ownerRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/owner/${currentUserId}`, {
                             headers: { "Authorization": `Bearer ${token}` }
                         });
 

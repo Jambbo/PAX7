@@ -22,7 +22,7 @@ export const useNotificationSocket = () => {
     useEffect(() => {
         if (!token) return;
 
-        const socketUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8081/ws';
+        const socketUrl = import.meta.env.VITE_WS_URL || `${import.meta.env.VITE_WS_URL}/ws`;
 
         const client = new Client({
             brokerURL: socketUrl,

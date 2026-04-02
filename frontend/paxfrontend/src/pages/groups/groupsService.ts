@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8081/api/v1/groups";
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1/groups`;
 
 export enum GroupPrivacy {
     PUBLIC = "PUBLIC",
@@ -50,7 +50,7 @@ export async function fetchAllGroups(): Promise<Group[]> {
         "Content-Type": "application/json"
     };
 
-    const response = await fetch("http://localhost:8081/api/v1/groups/all", {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/all`, {
         method: "GET",
         headers,
         mode: "cors"
@@ -71,7 +71,7 @@ export async function fetchMyGroups(): Promise<Group[]> {
         "Content-Type": "application/json"
     };
 
-    const response = await fetch("http://localhost:8081/api/v1/groups/me", {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/me`, {
         method: "GET",
         headers,
         mode: "cors"
@@ -91,7 +91,7 @@ export async function fetchUsersCount(): Promise<Number> {
         "Content-Type": "application/json"
     };
 
-    const response = await fetch("http://localhost:8081/api/v1/users/count", {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/count`, {
         method: "GET",
         headers,
         mode: "cors"
@@ -108,7 +108,7 @@ export async function joinGroup(groupId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
     if (!token) throw new Error("You are not authorized");
 
-    const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}/join`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/${groupId}/join`, {
         method: "POST",
         headers: {
             "Authorization": `Bearer ${token}`,
@@ -122,7 +122,7 @@ export async function joinGroup(groupId: number): Promise<void> {
 }
 export async function leaveGroup(groupId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
-    const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}/leave`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/${groupId}/leave`, {
         method: "POST",
         headers: { "Authorization": `Bearer ${token}` }
     });
@@ -142,7 +142,7 @@ export async function createGroup(data: any) {
 
     console.log("Real JSON sent to server:", payload);
 
-    const response = await fetch("http://localhost:8081/api/v1/groups", {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups`, {
         method: "POST",
         headers: {
             "Authorization": `Bearer ${token}`,
@@ -165,7 +165,7 @@ export async function deleteGroup(groupId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
     if (!token) throw new Error("You are not authorized");
 
-    const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/${groupId}`, {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`
@@ -189,7 +189,7 @@ export async function updateGroup(groupId: number, data: any): Promise<Group> {
         ownerId: null
     };
 
-    const response = await fetch(`http://localhost:8081/api/v1/groups/${groupId}`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/groups/${groupId}`, {
         method: "PUT",
         headers: {
             "Authorization": `Bearer ${token}`,

@@ -24,7 +24,7 @@ export const AuthCallback = () => {
             return;
         }
 
-        fetch("http://localhost:8080/realms/pax/protocol/openid-connect/token", {
+        fetch(`${import.meta.env.VITE_KEYCLOAK_URL}/realms/pax/protocol/openid-connect/token`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",

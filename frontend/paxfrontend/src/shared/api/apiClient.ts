@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:8081';
+const BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 async function fetchClient(endpoint: string, { data, ...customConfig }: { data?: any } & RequestInit = {}) {
     const token = localStorage.getItem('access_token');

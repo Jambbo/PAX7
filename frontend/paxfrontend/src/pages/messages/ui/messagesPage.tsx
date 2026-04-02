@@ -82,7 +82,7 @@ export const MessagesPage: React.FC = () => {
     };
 
     const fetchFriends = () => {
-        fetch("http://localhost:8081/api/v1/users/me/friends", {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/me/friends`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }
@@ -98,7 +98,7 @@ export const MessagesPage: React.FC = () => {
     };
 
     const fetchConversations = (userId: string) => {
-        fetch("http://localhost:8081/api/chat/conversations", {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat/conversations`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }
@@ -150,7 +150,7 @@ export const MessagesPage: React.FC = () => {
         setCurrentUserId(userId);
 
         const stompClient = new Client({
-            brokerURL: "ws://localhost:8081/ws",
+            brokerURL: `${import.meta.env.VITE_WS_URL}/ws`,
             connectHeaders: {
                 Authorization: `Bearer ${token}`
             },
@@ -201,7 +201,7 @@ export const MessagesPage: React.FC = () => {
             setUsers([]);
         } else {
             const timeoutId = setTimeout(() => {
-                fetch(`http://localhost:8081/api/v1/users/search?username=${encodeURIComponent(searchQuery)}`, {
+                fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/search?username=${encodeURIComponent(searchQuery)}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("access_token")}`
                     }
@@ -237,7 +237,7 @@ export const MessagesPage: React.FC = () => {
     useEffect(() => {
         if (!activeConversationId) return;
 
-        fetch(`http://localhost:8081/api/chat/${activeConversationId}?page=0&size=50`, {
+        fetch(`${import.meta.env.VITE_BACKEND_URL}/api/chat/${activeConversationId}?page=0&size=50`, {
             headers: {
                 Authorization: `Bearer ${localStorage.getItem("access_token")}`
             }

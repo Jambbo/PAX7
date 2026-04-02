@@ -141,7 +141,7 @@ export const ProfilePage: React.FC = () => {
 
                         if (!userData) {
                             try {
-                                const allRes = await fetch("http://localhost:8081/api/v1/users/all", {
+                                const allRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/all`, {
                                     headers: { "Authorization": `Bearer ${token}` }
                                 });
                                 if (allRes.ok) {
@@ -173,13 +173,13 @@ export const ProfilePage: React.FC = () => {
                 if (userData) {
                     try {
                         const tokenHeader = token && token !== "undefined" ? { "Authorization": `Bearer ${token}` } : {};
-                        const wallRes = await fetch(`http://localhost:8081/api/v1/users/${userData.id}/wall`, { headers: tokenHeader as any });
+                        const wallRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/${userData.id}/wall`, { headers: tokenHeader as any });
                         if (wallRes.ok) {
                             const wallData = await wallRes.json();
                             const wgId = wallData.groupId;
                             setWallGroupId(wgId);
                             try {
-                                const wallPostsRes = await fetch(`http://localhost:8081/api/v1/posts/group/${wgId}?t=${Date.now()}`, {
+                                const wallPostsRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/posts/group/${wgId}?t=${Date.now()}`, {
                                     headers: tokenHeader as any
                                 });
                                 if (wallPostsRes.ok) {
@@ -212,7 +212,7 @@ export const ProfilePage: React.FC = () => {
                         const headers: HeadersInit = { "Content-Type": "application/json" };
                         if (token && token !== "undefined") headers["Authorization"] = `Bearer ${token}`;
 
-                        const likesRes = await fetch(`http://localhost:8081/api/v1/users/${userData.id}/likedPosts`, { headers });
+                        const likesRes = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/${userData.id}/likedPosts`, { headers });
 
                         if (likesRes.ok) {
                             const likedData = await likesRes.json();
@@ -545,7 +545,7 @@ export const ProfilePage: React.FC = () => {
                                                         setIsPostingToWall(true);
                                                         try {
                                                             const token = localStorage.getItem("access_token");
-                                                            const res = await fetch(`http://localhost:8081/api/v1/posts`, {
+                                                            const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/posts`, {
                                                                 method: 'POST',
                                                                 headers: {
                                                                     'Content-Type': 'application/json',

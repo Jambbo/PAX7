@@ -52,6 +52,10 @@ services:
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_URL: http://localhost:8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_METRICS_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
     depends_on:
@@ -75,7 +79,8 @@ services:
     environment:
       - SPRING_PROFILES_ACTIVE=deployment
       - HOST=postgres:5432
-      - KEYCLOAK_ISSUER_URI=http://pax-keycloak:8080/realms/pax
+      - KEYCLOAK_ISSUER_URI=http://localhost:8080/realms/pax
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI=http://pax-keycloak:8080/realms/pax/protocol/openid-connect/certs
     depends_on:
       postgres:
         condition: service_healthy

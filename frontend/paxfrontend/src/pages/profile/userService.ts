@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8081/api/v1/users";
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1/users`;
 import { apiFetch } from '../../features/Auth/apiFetch';
 
 export interface UserData {

@@ -58,7 +58,7 @@ const MembersModal: React.FC<{ groupId: number, onClose: () => void, accentColor
                 const token = localStorage.getItem("access_token");
                 const headers = token && token !== "undefined" ? { "Authorization": `Bearer ${token}` } : {};
 
-                let res = await fetch(`http://localhost:8081/api/v1/users/group/${groupId}`, { headers: headers as any });
+                let res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/users/group/${groupId}`, { headers: headers as any });
 
                 if (res.ok) {
                     const data = await res.json();

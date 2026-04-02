@@ -4,7 +4,7 @@ export const refreshAccessToken = async () => {
     if (!refreshToken) return false;
 
     const res = await fetch(
-        "http://localhost:8080/realms/pax/protocol/openid-connect/token",
+        `${import.meta.env.VITE_KEYCLOAK_URL}/realms/pax/protocol/openid-connect/token`,
         {
             method: "POST",
             headers: {

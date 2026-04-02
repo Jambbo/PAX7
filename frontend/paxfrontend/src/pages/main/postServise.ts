@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:8081/api/v1/posts";
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/v1/posts`;
 
 export interface Post {
     id: number;
@@ -104,7 +104,7 @@ export async function createPost(data: CreatePostDto): Promise<Post> {
 }
 export async function deletePost(postId: number): Promise<void> {
     const token = localStorage.getItem("access_token");
-    const response = await fetch(`http://localhost:8081/api/v1/posts/${postId}`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/v1/posts/${postId}`, {
         method: "DELETE",
         headers: {
             "Authorization": `Bearer ${token}`

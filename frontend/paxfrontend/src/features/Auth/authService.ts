@@ -1,8 +1,9 @@
 import {generatePKCE} from "./pkce";
 
-const KEYCLOAK_URL = "http://localhost:8080/realms/pax/protocol/openid-connect";
-const CLIENT_ID = "pax-frontend";
 const REDIRECT_URI = `${window.location.origin}/auth/callback`;
+
+const KEYCLOAK_URL = import.meta.env.VITE_KEYCLOAK_URL + "/realms/pax/protocol/openid-connect";
+const CLIENT_ID = "pax-frontend";
 
 const getInfoFromToken = () => {
     const token = localStorage.getItem('access_token');
