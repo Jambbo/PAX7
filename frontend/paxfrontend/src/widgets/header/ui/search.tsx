@@ -20,7 +20,6 @@ export const Search = () => {
     const [activeTab, setActiveTab] = useState<'users' | 'groups' | 'posts'>('users')
     const navigate = useNavigate();
 
-    // --- ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -38,7 +37,6 @@ export const Search = () => {
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
 
     useEffect(() => {
         if (inputValue.trim().length > 0) {
@@ -239,7 +237,6 @@ export const Search = () => {
                 <button
                     type='button'
                     onClick={active ? resetInput : () => setActive(!active)}
-                    // Тут ми використовуємо динамічний колір для іконки
                     className={`absolute left-0 w-[43px] h-[43px] flex items-center justify-center text-${accentColor}-600 hover:text-${accentColor}-800 transition-colors`}
                     aria-label="Open search bar"
                 >

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bookmark, Search, Loader2, MessageSquare, X, AlertTriangle } from 'lucide-react';
-import { PostItem } from '../../main/PostItem'; // ПЕРЕВІР ШЛЯХ
-import { Post, fetchBookmarks, likePost, deletePost, updatePost, removeBookmark } from '../../main/postServise'; // ПЕРЕВІР ШЛЯХ
+import { PostItem } from '../../main/PostItem';
+import { Post, fetchBookmarks, likePost, deletePost, updatePost, removeBookmark } from '../../main/postServise';
 
 
 interface ImageModalProps {
@@ -24,7 +24,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ imageUrl, onClose }) => {
         </div>
     );
 };
-// ----------------------------------
 
 export const BookmarksPage = () => {
     const [accentColor, setAccentColor] = useState(() => localStorage.getItem('site_accent_color') || 'purple');
@@ -34,7 +33,6 @@ export const BookmarksPage = () => {
     const [searchQuery, setSearchQuery] = useState("");
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-    // Стейт лайків та закладок (для відображення сердечок та прапорців)
     const [likedPosts, setLikedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_liked_posts');
         if (saved) {
@@ -47,7 +45,6 @@ export const BookmarksPage = () => {
         return new Set<number>();
     });
 
-    // Модалки
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
     const [isDeletingPost, setIsDeletingPost] = useState(false);
@@ -56,7 +53,6 @@ export const BookmarksPage = () => {
         localStorage.setItem('pax_liked_posts', JSON.stringify(Array.from(likedPosts)));
     }, [likedPosts]);
 
-    // ЗАВАНТАЖЕННЯ ЗАКЛАДОК З БЕКЕНДУ
     useEffect(() => {
         const loadBookmarks = async () => {
             setIsLoading(true);
@@ -68,18 +64,17 @@ export const BookmarksPage = () => {
                 } catch (e) { console.error(e); }
             } else {
                 setIsLoading(false);
-                return; // Не авторизований
+                return;
             }
 
             try {
                 const data = await fetchBookmarks();
-                setPosts(data.reverse()); // Найновіші збережені зверху
+                setPosts(data.reverse());
 
-                // Також синхронізуємо localStorage для закладок
                 const bookmarkedIds = data.map(p => p.id);
                 localStorage.setItem('pax_saved_posts', JSON.stringify(bookmarkedIds));
             } catch (error) {
-                console.error("Помилка завантаження закладок", error);
+                console.error("Error loading bookmarks", error);
             } finally {
                 setIsLoading(false);
             }
@@ -88,7 +83,6 @@ export const BookmarksPage = () => {
         loadBookmarks();
     }, []);
 
-    // --- ОБРОБНИКИ ДІЙ ---
     const handleLike = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
         const isLiked = likedPosts.has(postId);
@@ -106,10 +100,8 @@ export const BookmarksPage = () => {
     const handleSaveToggle = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
-        // Візуально миттєво прибираємо пост зі списку (Оптимістичний UI)
         setPosts(prev => prev.filter(p => p.id !== postId));
 
-        // Оновлюємо localStorage
         const saved = localStorage.getItem('pax_saved_posts');
         if (saved) {
             try {
@@ -122,7 +114,7 @@ export const BookmarksPage = () => {
         try {
             await removeBookmark(postId);
         } catch (err) {
-            console.error("Помилка видалення закладки", err);
+            console.error("Error deleting bookmark", err);
         }
     };
 
@@ -138,7 +130,7 @@ export const BookmarksPage = () => {
             await deletePost(postToDeleteId);
             setPosts(prev => prev.filter(p => p.id !== postToDeleteId));
             setPostToDeleteId(null);
-        } catch (err) { alert("Помилка видалення."); }
+        } catch (err) { alert("Deletion error."); }
         finally { setIsDeletingPost(false); }
     };
 
@@ -205,7 +197,7 @@ export const BookmarksPage = () => {
                             accentColor={accentColor}
                             isLiked={currentUserId !== null && likedPosts.has(post.id)}
                             onLikeToggle={handleLike}
-                            isSaved={true} // На цій сторінці всі пости - збережені
+                            isSaved={true}
                             onSaveToggle={handleSaveToggle}
                             onDeleteClick={(id) => setPostToDeleteId(id)}
                             onEditSave={handleSaveEdit}
@@ -215,7 +207,7 @@ export const BookmarksPage = () => {
                 )}
             </div>
 
-            {/* Модалки */}
+            
             {selectedImage && <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />}
 
             {postToDeleteId !== null && (

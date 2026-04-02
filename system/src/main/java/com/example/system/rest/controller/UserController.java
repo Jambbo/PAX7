@@ -140,4 +140,66 @@ public class UserController {
 
         return ResponseEntity.ok(userMapper.toDto(users));
     }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/{userId}/friend-request")
+    public ResponseEntity<Void> sendFriendRequest(@AuthenticationPrincipal Jwt jwt, @PathVariable("userId") String recipientId) {
+        userService.sendFriendRequest(jwt.getSubject(), recipientId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @DeleteMapping("/{userId}/friend")
+    public ResponseEntity<Void> removeFriend(@AuthenticationPrincipal Jwt jwt, @PathVariable("userId") String friendId) {
+        userService.removeFriend(jwt.getSubject(), friendId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/friend-request/{notificationId}/accept")
+    public ResponseEntity<Void> acceptFriendRequest(@AuthenticationPrincipal Jwt jwt, @PathVariable("notificationId") Long notificationId, @RequestParam("senderId") String senderId) {
+        userService.acceptFriendRequest(jwt.getSubject(), senderId, notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/friend-request/{notificationId}/decline")
+    public ResponseEntity<Void> declineFriendRequest(@AuthenticationPrincipal Jwt jwt, @PathVariable("notificationId") Long notificationId) {
+        userService.declineFriendRequest(jwt.getSubject(), notificationId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me/friends")
+    public ResponseEntity<List<UserReadResponseDto>> getMyFriends(@AuthenticationPrincipal Jwt jwt) {
+        List<User> friends = userService.getUserFriends(jwt.getSubject());
+        return ResponseEntity.ok(userMapper.toDto(friends));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{userId}/friendship-status")
+    public ResponseEntity<Map<String, String>> getFriendshipStatus(@AuthenticationPrincipal Jwt jwt, @PathVariable("userId") String userId) {
+        String status = userService.getFriendshipStatus(jwt.getSubject(), userId);
+        return ResponseEntity.ok(Map.of("status", status));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/me/friend-requests/outgoing")
+    public ResponseEntity<List<UserReadResponseDto>> getOutgoingFriendRequests(@AuthenticationPrincipal Jwt jwt) {
+        List<User> requests = userService.getOutgoingFriendRequests(jwt.getSubject());
+        return ResponseEntity.ok(userMapper.toDto(requests));
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @GetMapping("/{userId}/wall")
+    public ResponseEntity<Map<String, Long>> getUserWallGroup(@PathVariable("userId") String userId) {
+        Long groupId = userService.getOrCreateUserWallGroup(userId);
+        return ResponseEntity.ok(Map.of("groupId", groupId));
+    }
+
+    @GetMapping("/group/{groupId}")
+    public ResponseEntity<List<UserReadResponseDto>> getUsersByGroupId(@PathVariable("groupId") Long groupId) {
+        List<User> users = userService.getUsersByGroupId(groupId);
+        return ResponseEntity.ok(userMapper.toDto(users));
+    }
 }

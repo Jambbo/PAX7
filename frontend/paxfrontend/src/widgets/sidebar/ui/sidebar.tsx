@@ -21,6 +21,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../../app/layout/store";
 import { logout } from "../../../features/Auth/authService";
 import { AuthModal } from "../../AuthModal/AuthModal";
+import { HashtagModal } from "./HashtagModal";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -30,10 +31,20 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenticated }) => {
     const [activeItem, setActiveItem] = useState("home");
-    const [authModal, setAuthModal] = useState({ isOpen: false, title: "", message: "" }); // Стейт для модалки
+    const [authModal, setAuthModal] = useState({ isOpen: false, title: "", message: "" });
+    const [isHashtagModalOpen, setIsHashtagModalOpen] = useState(false);
     const location = useLocation();
 
-    // --- ЛОГІКА СИНХРОНІЗАЦІЇ САЙДБАРУ З URL ---
+    const [customLinks, setCustomLinks] = useState<string[]>(() => {
+        const saved = localStorage.getItem('pax_quick_links');
+        return saved ? JSON.parse(saved) : ["news", "gaming"];
+    });
+
+    const handleSaveLinks = (links: string[]) => {
+        setCustomLinks(links);
+        localStorage.setItem('pax_quick_links', JSON.stringify(links));
+    };
+
     useEffect(() => {
         const pathSegment = location.pathname.split('/')[1];
         if (!pathSegment || pathSegment === 'home') {
@@ -42,9 +53,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
             setActiveItem(pathSegment);
         }
     }, [location.pathname]);
-    // ------------------------------------------
 
-    // --- ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -71,16 +80,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
         { id: "notifications", icon: Bell, label: "Notifications", badge: unreadNotificationsCount > 0 ? unreadNotificationsCount : null, requiresAuth: true, authMessage: "Please log in to see your notifications." },
     ];
 
-    const quickLinks = [
-        { id: "general", icon: Hash, label: "General", color: "text-blue-500" },
-        { id: "support", icon: Hash, label: "Support", color: "text-green-500" },
-        { id: "announcements", icon: Hash, label: "Announcements", color: "text-purple-500" },
-        { id: "events", icon: Calendar, label: "Events", color: "text-orange-500" },
-    ];
 
     const handleNavClick = (e: React.MouseEvent, item: any) => {
         if (item.requiresAuth && !isAuthenticated) {
-            e.preventDefault(); // Забороняємо перехід
+            e.preventDefault();
             setAuthModal({
                 isOpen: true,
                 title: "Authentication Required",
@@ -100,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                     ${isOpen ? "w-72" : "w-20"}
                 `}
             >
-                {/* Toggle Button Header */}
+                
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800/50">
                     {isOpen && (
                         <span className="font-semibold text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -115,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                     </button>
                 </div>
 
-                {/* Main Navigation */}
+                
                 <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-800 scrollbar-track-transparent">
                     {menuItems.map((item) => (
                         <Link
@@ -126,9 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                             <button
                                 className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all duration-200 group relative mb-1
                                     ${activeItem === item.id
-                                    // Активний елемент: динамічний колір фону
                                     ? `bg-${accentColor}-600 text-white shadow-lg shadow-${accentColor}-500/20`
-                                    // Неактивний елемент: адаптивний ховер
                                     : "hover:bg-gray-100 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
                                 }`
                                 }
@@ -138,7 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                                     <>
                                         <span className="flex-1 text-left text-sm font-medium">{item.label}</span>
 
-                                        {/* Значок замочка, якщо потрібно */}
+                                        
                                         {item.requiresAuth && !isAuthenticated && (
                                             <Lock size={14} className="text-gray-400 dark:text-gray-500 mr-1" />
                                         )}
@@ -159,35 +160,43 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                         </Link>
                     ))}
 
-                    {isOpen && (
+                    {isOpen && isAuthenticated && (
                         <>
-                            {/* Quick Links Section */}
+                            
                             <div className="pt-6">
                                 <div className="flex items-center justify-between px-3 mb-3">
                                     <span className="text-xs font-semibold text-gray-500 dark:text-gray-500 uppercase tracking-wider">
                                         Quick Links
                                     </span>
-                                    <button className={`text-gray-400 hover:text-${accentColor}-500 transition-colors`}>
+                                    <button
+                                        onClick={() => setIsHashtagModalOpen(true)}
+                                        className={`text-gray-400 hover:text-${accentColor}-500 transition-colors`}
+                                    >
                                         <Plus size={16} />
                                     </button>
                                 </div>
                                 <div className="space-y-1">
-                                    {quickLinks.map((link) => (
-                                        <button
-                                            key={link.id}
+                                    {customLinks.map((link) => (
+                                        <Link
+                                            to={`/trending?hashtag=${link}`}
+                                            key={link}
+                                            onClick={(e) => setActiveItem("trending")}
                                             className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/50 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all duration-200 group"
                                         >
-                                            <link.icon size={18} className={`flex-shrink-0 ${link.color}`} />
-                                            <span className="text-sm">{link.label}</span>
-                                        </button>
+                                            <Hash size={18} className={`flex-shrink-0 text-${accentColor}-500`} />
+                                            <span className="text-sm">#{link}</span>
+                                        </Link>
                                     ))}
+                                    {customLinks.length === 0 && (
+                                        <p className="px-3 text-xs text-gray-500 italic">No links added.</p>
+                                    )}
                                 </div>
                             </div>
                         </>
                     )}
                 </nav>
 
-                {/* Bottom Actions */}
+                
                 <div className="border-t border-gray-200 dark:border-gray-800/50 p-3 space-y-2">
                     <Link to="/settings" onClick={(e) => {
                         if (!isAuthenticated) {
@@ -218,7 +227,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                         </button>
                     </Link>
 
-                    {/* Logout button */}
+                    
                     {isAuthenticated && (
                         <button onClick={logout}
                                 className="w-full flex items-center gap-3 px-3 py-3 rounded-lg bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white transition-all duration-200 shadow-lg shadow-red-500/20"
@@ -230,12 +239,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, toggleMenu, isAuthenti
                 </div>
             </div>
 
-            {/* Auth Modal винесено за межі головного div сайдбару */}
+            
             <AuthModal
                 isOpen={authModal.isOpen}
                 onClose={() => setAuthModal({ ...authModal, isOpen: false })}
                 title={authModal.title}
                 message={authModal.message}
+            />
+
+            <HashtagModal
+                isOpen={isHashtagModalOpen}
+                onClose={() => setIsHashtagModalOpen(false)}
+                onSave={handleSaveLinks}
+                currentLinks={customLinks}
+                accentColor={accentColor}
             />
         </>
     );

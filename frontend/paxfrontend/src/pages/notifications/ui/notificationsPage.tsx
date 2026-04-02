@@ -13,7 +13,9 @@ import {
     Trash2,
     MoreVertical,
     Settings,
-    Clock
+    Clock,
+    UserCheck,
+    X,
 } from 'lucide-react';
 
 
@@ -22,11 +24,12 @@ import {RootState, AppDispatch} from '../../../app/layout/store';
 import {
     markNotificationRead,
     markAllNotificationsRead,
-    deleteNotificationThunk
+    deleteNotificationThunk,
+    removeNotificationLocally
 } from '../../../features/Notifications/notificationsSlice';
+import { acceptFriendRequest, declineFriendRequest, fetchOutgoingRequests } from '../../profile/userService';
 
-type NotificationType = 'mention' | 'like' | 'follow' | 'reply' | 'system';
-
+type NotificationType = 'mention' | 'like' | 'follow' | 'reply' | 'system' | 'friend_request';
 
 const typeMeta: Record<
     NotificationType,
@@ -70,6 +73,17 @@ const typeMeta: Record<
         },
         cardBorder: 'border-green-200 dark:border-green-500/25',
         iconBg: 'from-green-600 to-green-700'
+    },
+    friend_request: {
+        label: 'Friend Requests',
+        icon: <UserCheck size={18} className="text-white"/>,
+        pill: {
+            bg: 'bg-teal-100 dark:bg-teal-900/20',
+            text: 'text-teal-700 dark:text-teal-300',
+            border: 'border-teal-200 dark:border-teal-500/30'
+        },
+        cardBorder: 'border-teal-200 dark:border-teal-500/25',
+        iconBg: 'from-teal-600 to-teal-700'
     },
     reply: {
         label: 'Replies',
@@ -117,11 +131,25 @@ export const NotificationsPage: React.FC = () => {
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
 
     const [activeFilter, setActiveFilter] = useState<'all' | NotificationType>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+    const [outgoingRequests, setOutgoingRequests] = useState<any[]>([]);
+    const [toastMessage, setToastMessage] = useState<{title: string, message: string} | null>(null);
+
+    const showToast = (title: string, message: string) => {
+        setToastMessage({ title, message });
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    useEffect(() => {
+        if (activeFilter === 'friend_request') {
+            fetchOutgoingRequests()
+                .then(reqs => setOutgoingRequests(reqs))
+                .catch(err => console.error(err));
+        }
+    }, [activeFilter, notificationsRaw]);
 
     const notifications = useMemo(() => {
         return notificationsRaw.map(n => {
@@ -130,23 +158,26 @@ export const NotificationsPage: React.FC = () => {
             else if (n.type === 'NEW_COMMENT' || n.type === 'NEW_MESSAGE') mappedType = 'reply';
             else if (n.type === 'GROUP_INVITE') mappedType = 'mention';
             else if (n.type === 'FOLLOW') mappedType = 'follow';
+            else if (n.type === 'FRIEND_REQUEST') mappedType = 'friend_request';
 
             return {
                 id: n.id,
                 type: mappedType,
                 title: n.type.replace('_', ' '),
-                message: '',
+                message: n.type === 'FRIEND_REQUEST' ? 'wants to be your friend' : '',
                 time: new Intl.DateTimeFormat('en-US', {
                     dateStyle: 'short',
                     timeStyle: 'short'
                 }).format(new Date(n.createdAt)),
                 isRead: n.status === 'READ',
                 actor: n.sender ? {
+                    id: n.sender.id,
                     name: n.sender.username,
                     avatar: n.sender.username.substring(0, 2).toUpperCase()
                 } : undefined,
                 context: undefined as any,
-                meta: undefined as any
+                meta: undefined as any,
+                originalType: n.type
             };
         });
     }, [notificationsRaw]);
@@ -188,10 +219,129 @@ export const NotificationsPage: React.FC = () => {
         dispatch(deleteNotificationThunk(id));
     };
 
+    const renderNotification = (n: any) => {
+        const meta = typeMeta[n.type];
+        const isFriendRequest = n.originalType === 'FRIEND_REQUEST';
+
+        const handleAccept = async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            if (!n.actor) return;
+            try {
+                await acceptFriendRequest(n.id, n.actor.id);
+                dispatch(removeNotificationLocally(n.id));
+                showToast("Accepted", "Friend request accepted!");
+            } catch (err) {
+                console.error(err);
+                showToast("Error", "Error accepting friend request.");
+            }
+        };
+
+        const handleDecline = async (e: React.MouseEvent) => {
+            e.stopPropagation();
+            try {
+                await declineFriendRequest(n.id);
+                dispatch(removeNotificationLocally(n.id));
+                showToast("Filtered", "Friend request declined.");
+            } catch (err) {
+                console.error(err);
+                showToast("Error", "Error declining friend request.");
+            }
+        };
+
+        return (
+            <div
+                key={n.id}
+                className={`group flex items-start gap-4 p-5 rounded-2xl border transition-all duration-300 relative overflow-hidden cursor-pointer ${
+                    n.isRead ? 'opacity-70 dark:opacity-90' : 'opacity-100'
+                }`}
+            >
+                
+                <div className="flex-shrink-0">
+                    <div
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md bg-gradient-to-br ${meta.iconBg}`}
+                    >
+                        {meta.icon}
+                    </div>
+                </div>
+
+                <div className="flex-1 min-w-0 pr-12">
+                    <div className="flex items-center gap-2 mb-1 cursor-pointer">
+                        <span
+                            className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${meta.pill.bg} ${meta.pill.text} ${meta.pill.border} uppercase tracking-wider`}
+                        >
+                            {meta.label}
+                        </span>
+
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {n.time}
+                        </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+                            {n.actor ? (
+                                <div className="w-full h-full flex items-center justify-center text-white font-semibold bg-gray-700 dark:bg-gray-800">
+                                    {n.actor.avatar}
+                                </div>
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-100 dark:bg-gray-900">
+                                    <UserCheck size={18}/>
+                                </div>
+                            )}
+                        </div>
+
+                        <h4 className="text-gray-900 dark:text-white font-medium text-base leading-snug">
+                            {n.actor && <span className="font-bold mr-1">{n.actor.name}</span>}
+                            {n.title}
+                            {n.message && <span className="ml-1 text-gray-500 font-normal">{n.message}</span>}
+                        </h4>
+                    </div>
+
+                    {n.context && (
+                        <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="text-gray-400 dark:text-gray-500">Context:</span>{' '}
+                            <span className="text-gray-600 dark:text-gray-300 font-medium">{n.meta.postTitle}</span>
+                        </div>
+                    )}
+
+                    {isFriendRequest && !n.isRead && (
+                        <div className="mt-3 flex gap-2">
+                            <button
+                                onClick={handleAccept}
+                                className={`px-4 py-1.5 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white text-sm font-medium rounded-lg flex items-center gap-1 transition-colors`}
+                            >
+                                <Check size={16} /> Accept
+                            </button>
+                            <button
+                                onClick={handleDecline}
+                                className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                                <X size={16} /> Decline
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
+    const token = localStorage.getItem("access_token");
+    const isAuthenticated = token && token !== "undefined";
+
+    if (!isAuthenticated) {
+        return (
+            <div className="max-w-4xl mx-auto py-20 text-center">
+                <Bell size={64} className="mx-auto text-gray-300 mb-4" />
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Sign in to view notifications</h2>
+                <p className="text-gray-500">You need to be logged in to see your notifications.</p>
+            </div>
+        );
+    }
+
     return (
         <div className="max-w-7xl mx-auto">
             <div className="max-w-7xl mx-auto p-6">
-                {/* Header */}
+                
                 <div className="mb-8 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
                     <div>
                         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3 transition-colors">
@@ -218,7 +368,7 @@ export const NotificationsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Stats Bar */}
+                
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                     <div
                         className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-4 shadow-sm transition-colors`}>
@@ -281,11 +431,11 @@ export const NotificationsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Filters and Search */}
+                
                 <div
                     className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 mb-6 shadow-sm transition-colors">
                     <div className="flex flex-col lg:flex-row gap-4">
-                        {/* Filter Tabs */}
+                        
                         <div className="flex flex-wrap gap-2">
                             {(['all', 'mention', 'reply', 'like', 'follow', 'system'] as const).map(key => {
                                 const isActive = activeFilter === key;
@@ -317,7 +467,7 @@ export const NotificationsPage: React.FC = () => {
                         </div>
 
                         <div className="flex-1 flex flex-col sm:flex-row gap-3">
-                            {/* Search */}
+                            
                             <div className="relative flex-1">
                                 <Search
                                     size={18}
@@ -331,7 +481,7 @@ export const NotificationsPage: React.FC = () => {
                                 />
                             </div>
 
-                            {/* Unread toggle */}
+                            
                             <button
                                 onClick={() => setShowUnreadOnly(v => !v)}
                                 className={[
@@ -348,7 +498,7 @@ export const NotificationsPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* List */}
+                
                 <div className="space-y-3">
                     {filtered.length === 0 ? (
                         <div
@@ -365,6 +515,7 @@ export const NotificationsPage: React.FC = () => {
                     ) : (
                         filtered.map(n => {
                             const meta = typeMeta[n.type];
+                            const isFriendRequest = n.originalType === 'FRIEND_REQUEST';
 
                             return (
                                 <div
@@ -376,7 +527,7 @@ export const NotificationsPage: React.FC = () => {
                                     ].join(' ')}
                                 >
                                     <div className="flex items-start gap-4">
-                                        {/* Icon */}
+                                        
                                         <div className="relative">
                                             <div
                                                 className={[
@@ -392,7 +543,7 @@ export const NotificationsPage: React.FC = () => {
                                             )}
                                         </div>
 
-                                        {/* Content */}
+                                        
                                         <div className="flex-1 min-w-0">
                                             <div
                                                 className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
@@ -446,9 +597,47 @@ export const NotificationsPage: React.FC = () => {
                                                                 className="text-gray-600 dark:text-gray-300 font-medium">{n.meta.postTitle}</span>
                                                         </div>
                                                     )}
+
+                                                    {isFriendRequest && !n.isRead && (
+                                                        <div className="mt-3 flex gap-2">
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    if (!n.actor) return;
+                                                                    try {
+                                                                        await acceptFriendRequest(n.id, n.actor.id);
+                                                                        dispatch(removeNotificationLocally(n.id));
+                                                                        showToast("Accepted", "Friend request accepted!");
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                        showToast("Error", "Error accepting friend request.");
+                                                                    }
+                                                                }}
+                                                                className={`px-4 py-1.5 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white text-sm font-medium rounded-lg flex items-center gap-1 transition-colors`}
+                                                            >
+                                                                <Check size={16} /> Accept
+                                                            </button>
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        await declineFriendRequest(n.id);
+                                                                        dispatch(removeNotificationLocally(n.id));
+                                                                        showToast("Declined", "Request has been declined.");
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                        showToast("Error", "Error declining friend request.");
+                                                                    }
+                                                                }}
+                                                                className="px-4 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-lg flex items-center gap-1 transition-colors"
+                                                            >
+                                                                <X size={16} /> Decline
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
 
-                                                {/* Right meta */}
+                                                
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     <span
                                                         className="text-xs text-gray-500 dark:text-gray-400">{n.time}</span>
@@ -459,7 +648,7 @@ export const NotificationsPage: React.FC = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Actions */}
+                                            
                                             <div className="mt-3 flex items-center gap-2">
                                                 <button
                                                     onClick={() => toggleRead(n.id)}
@@ -484,7 +673,7 @@ export const NotificationsPage: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Actor avatar */}
+                                        
                                         {n.actor && (
                                             <div
                                                 className="hidden md:flex items-center justify-center w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 text-gray-700 dark:text-white font-semibold text-sm">
@@ -497,7 +686,49 @@ export const NotificationsPage: React.FC = () => {
                         })
                     )}
                 </div>
+
+                {activeFilter === 'friend_request' && outgoingRequests.length > 0 && (
+                    <div className="mt-10">
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <UserPlus className={`text-${accentColor}-500`} size={24}/>
+                            Outgoing Friend Requests
+                        </h2>
+                        <div className="space-y-3">
+                            {outgoingRequests.map(req => (
+                                <div key={req.id} className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-10 h-10 rounded-full bg-${accentColor}-100 dark:bg-${accentColor}-900/30 text-${accentColor}-600 flex items-center justify-center font-bold`}>
+                                            {req.username.substring(0, 1).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="font-semibold text-gray-900 dark:text-white">{req.username}</p>
+                                            <p className="text-sm text-gray-500">Request pending...</p>
+                                        </div>
+                                    </div>
+                                    <span className="px-3 py-1 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 text-xs font-bold rounded-full border border-yellow-200 dark:border-yellow-800">
+                                        PENDING
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            
+            {toastMessage && (
+                <div className="fixed bottom-6 right-6 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-fadeInFromBottom z-50">
+                    <Check size={20} className={`text-${accentColor}-500 dark:text-${accentColor}-500`} />
+                    <div>
+                        <h4 className="font-bold text-sm">{toastMessage.title}</h4>
+                        <p className="text-xs opacity-80">{toastMessage.message}</p>
+                    </div>
+                    <button onClick={() => setToastMessage(null)} className="ml-4 p-1 hover:bg-white/20 dark:hover:bg-black/10 rounded-lg transition-colors">
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
+

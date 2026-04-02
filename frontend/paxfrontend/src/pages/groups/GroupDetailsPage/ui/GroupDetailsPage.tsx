@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Users, MessageSquare, Shield, Lock, Check, UserPlus, Loader2, Eye, Heart, Globe, X, Image as ImageIcon, Send, Trash2, AlertTriangle, Settings, Edit3, Bookmark } from 'lucide-react';
 import { fetchGroupById, joinGroup, leaveGroup, fetchMyGroups, deleteGroup, updateGroup, Group } from '../../groupsService';
 import { fetchGroupPosts, createPost, deletePost, updatePost, likePost, unlikePost, sortPosts, addBookmark,
     removeBookmark, Post } from '../../../main/postServise';
 import { AuthModal } from '../../../../widgets/AuthModal/AuthModal';
 
-// ШЛЯХ ДО НОВОГО КОМПОНЕНТА POST ITEM (Перевір, чи правильний імпорт!)
 import { PostItem } from '../../../main/PostItem';
 
-// --- Компонент Модального вікна для перегляду фото (LightBox) ---
 interface ImageModalProps {
     imageUrl: string;
     onClose: () => void;
@@ -25,10 +23,7 @@ const ImageModal: React.FC<ImageModalProps> = ({ imageUrl, onClose }) => {
     }, [onClose]);
 
     return (
-        <div
-            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
-            onClick={onClose}
-        >
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
             <button
                 onClick={onClose}
                 className="absolute top-6 right-6 p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
@@ -44,7 +39,81 @@ const ImageModal: React.FC<ImageModalProps> = ({ imageUrl, onClose }) => {
         </div>
     );
 };
-// -----------------------------------------------------------------------------------------
+
+interface UserData {
+    id: string;
+    username: string;
+    firstName: string;
+    lastName: string;
+    avatarUrl?: string;
+}
+
+const MembersModal: React.FC<{ groupId: number, onClose: () => void, accentColor: string }> = ({ groupId, onClose, accentColor }) => {
+    const [members, setMembers] = useState<UserData[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchMembers = async () => {
+            try {
+                const token = localStorage.getItem("access_token");
+                const headers = token && token !== "undefined" ? { "Authorization": `Bearer ${token}` } : {};
+
+                let res = await fetch(`http://localhost:8081/api/v1/users/group/${groupId}`, { headers: headers as any });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    const list = Array.isArray(data) ? data : (data.content || []);
+                    setMembers(list);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchMembers();
+
+        const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
+    }, [groupId, onClose]);
+
+    return (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" onClick={onClose}>
+            <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md shadow-2xl animate-zoomIn relative flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
+                    <h3 className="font-bold text-xl text-gray-900 dark:text-white flex items-center gap-2">
+                        <Users size={22} className={`text-${accentColor}-500`} /> Members
+                    </h3>
+                    <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="overflow-y-auto p-3 flex-1">
+                    {loading ? (
+                        <div className="flex justify-center py-10"><Loader2 className={`animate-spin text-${accentColor}-500`} size={30} /></div>
+                    ) : members.length === 0 ? (
+                        <div className="text-center py-10 text-gray-500">No members found.</div>
+                    ) : (
+                        <div className="space-y-1">
+                            {members.map(user => (
+                                <Link to={`/profile/${user.id}`} key={user.id} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                    <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white font-bold bg-${accentColor}-600 flex-shrink-0`}>
+                                        {user.avatarUrl ? <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover"/> : user.username.substring(0, 1).toUpperCase()}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-medium text-gray-900 dark:text-white text-base">{user.firstName} {user.lastName}</span>
+                                        <span className="text-sm text-gray-500">@{user.username}</span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const GroupDetailsPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -56,36 +125,30 @@ export const GroupDetailsPage: React.FC = () => {
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Стейт для авторизації та ID поточного юзера
+    const [isMembersModalOpen, setIsMembersModalOpen] = useState(false);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-    // Стейт для модального вікна зображень та видалення групи
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Стейт для видалення поста
     const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
     const [isDeletingPost, setIsDeletingPost] = useState(false);
 
-    // Стейт для редагування групи
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editFormData, setEditFormData] = useState({ name: "", description: "", visibility: "public", location: "" });
     const [isUpdating, setIsUpdating] = useState(false);
 
-    // Стейт для створення поста
     const [isCreating, setIsCreating] = useState(false);
     const [newPostText, setNewPostText] = useState("");
     const [isSubmittingPost, setIsSubmittingPost] = useState(false);
 
-    // Лайки для постів
     const [likedPosts, setLikedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_liked_posts');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // ФІЛЬТРУЄМО ЖОРСТКО: пропускаємо ТІЛЬКИ справжні числа!
                 const validIds = parsed.filter((id: any) => typeof id === 'number' && !isNaN(id));
                 return new Set<number>(validIds);
             } catch (e) {
@@ -94,7 +157,6 @@ export const GroupDetailsPage: React.FC = () => {
         }
         return new Set<number>();
     });
-    // Стейт для збережених постів
     const [savedPosts, setSavedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_saved_posts');
         if (saved) {
@@ -109,7 +171,6 @@ export const GroupDetailsPage: React.FC = () => {
         return new Set<number>();
     });
 
-    // Синхронізація з localStorage
     useEffect(() => {
         localStorage.setItem('pax_saved_posts', JSON.stringify(Array.from(savedPosts)));
     }, [savedPosts]);
@@ -118,7 +179,6 @@ export const GroupDetailsPage: React.FC = () => {
         localStorage.setItem('pax_liked_posts', JSON.stringify(Array.from(likedPosts)));
     }, [likedPosts]);
 
-    // Модалка авторизації
     const [authModal, setAuthModal] = useState({ isOpen: false, title: "", message: "" });
     const requireAuth = (title: string, message: string) => {
         const token = localStorage.getItem("access_token");
@@ -141,7 +201,7 @@ export const GroupDetailsPage: React.FC = () => {
                         const payload = JSON.parse(atob(token.split('.')[1]));
                         setCurrentUserId(payload.sub);
                     } catch (e) {
-                        console.error("Помилка парсингу токена", e);
+                        console.error("Token parsing error", e);
                     }
                 } else {
                     setIsLoggedIn(false);
@@ -171,7 +231,7 @@ export const GroupDetailsPage: React.FC = () => {
                 setPosts(sortPosts(postsData, 'date'));
 
             } catch (err) {
-                console.error("Помилка завантаження сторінки групи:", err);
+                console.error("Error loading community page:", err);
             } finally {
                 setIsLoading(false);
             }
@@ -181,7 +241,6 @@ export const GroupDetailsPage: React.FC = () => {
 
     const isOwner = group?.ownerId === currentUserId;
 
-    // ===== ОНОВЛЕННЯ ГРУПИ =====
     const handleUpdateGroup = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsUpdating(true);
@@ -190,13 +249,12 @@ export const GroupDetailsPage: React.FC = () => {
             setGroup(prev => prev ? { ...prev, ...updatedGroup, isJoined: prev.isJoined } : null);
             setIsEditModalOpen(false);
         } catch (err) {
-            alert("Помилка оновлення групи");
+            alert("Error updating community");
         } finally {
             setIsUpdating(false);
         }
     };
 
-    // ===== ЛОГІКА ПОСТІВ (ЛАЙКИ, РЕДАГУВАННЯ, ВИДАЛЕННЯ) =====
     const handleLike = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
@@ -210,9 +268,7 @@ export const GroupDetailsPage: React.FC = () => {
         const postToUpdate = posts.find(p => p.id === postId);
         if (!postToUpdate) return;
 
-        // 1. МИТТЄВА ВІЗУАЛЬНА ЗМІНА (Оптимістичний UI)
         if (isLiked) {
-            // Візуально забираємо лайк
             setLikedPosts(prev => {
                 const next = new Set(prev);
                 next.delete(postId);
@@ -224,7 +280,6 @@ export const GroupDetailsPage: React.FC = () => {
                 setProfileLikedPosts(prev => prev.filter(p => p.id !== postId));
             }
         } else {
-            // Візуально ставимо лайк
             setLikedPosts(prev => new Set(prev).add(postId));
             setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
 
@@ -233,17 +288,14 @@ export const GroupDetailsPage: React.FC = () => {
             }
         }
 
-        // 2. ВІДПРАВЛЯЄМО ЄДИНИЙ ЗАПИТ НА БЕКЕНД
         try {
-            // Ми завжди викликаємо likePost, бо бекенд сам знає, що це Toggle (перемикач)
             const updatedPostFromServer = await likePost(postId);
 
-            // Опціонально: оновлюємо пост реальними даними з сервера, щоб цифри 100% збігалися
             if (updatedPostFromServer && updatedPostFromServer.id) {
                 setPosts(prev => prev.map(p => p.id === postId ? updatedPostFromServer : p));
             }
         } catch (err) {
-            console.error("Помилка при зміні лайку на сервері", err);
+            console.error("Error changing like status on server", err);
         }
     };
 
@@ -258,13 +310,12 @@ export const GroupDetailsPage: React.FC = () => {
 
         const isSaved = savedPosts.has(postId);
 
-        // Оптимістичне оновлення інтерфейсу
         if (isSaved) {
             setSavedPosts(prev => { const next = new Set(prev); next.delete(postId); return next; });
-            try { await removeBookmark(postId); } catch (err) { console.error("Помилка видалення закладки", err); }
+            try { await removeBookmark(postId); } catch (err) { console.error("Error deleting bookmark", err); }
         } else {
             setSavedPosts(prev => new Set(prev).add(postId));
-            try { await addBookmark(postId); } catch (err) { console.error("Помилка додавання закладки", err); }
+            try { await addBookmark(postId); } catch (err) { console.error("Error adding bookmark", err); }
         }
     };
 
@@ -281,8 +332,8 @@ export const GroupDetailsPage: React.FC = () => {
             setPosts(posts.map(p => p.id === postId ? updatedPost : p));
         } catch (err) {
             console.error(err);
-            alert("Помилка збереження! Відкрий консоль (F12), щоб побачити точну причину від бекенду.");
-            throw err; // Прокидаємо помилку далі, щоб PostItem зняв стан завантаження
+            alert("Save error! Open console (F12) to see exact reason from backend.");
+            throw err;
         }
     };
 
@@ -294,13 +345,12 @@ export const GroupDetailsPage: React.FC = () => {
             setPosts(posts.filter(p => p.id !== postToDeleteId));
             setPostToDeleteId(null);
         } catch (err) {
-            alert("Помилка! Можливо, бекенд не дозволяє власнику групи видаляти чужі пости. Скажи другу виправити PostController.");
+            alert("Error! Backend might not allow community owner to delete others posts. Tell a friend to fix PostController.");
         } finally {
             setIsDeletingPost(false);
         }
     };
 
-    // ===== ЛОГІКА JOIN / LEAVE =====
     const toggleJoin = async () => {
         if (!group) return;
         if (!requireAuth("Join Community", "You need to log in to join communities and interact.")) return;
@@ -314,27 +364,25 @@ export const GroupDetailsPage: React.FC = () => {
                 setGroup({ ...group, isJoined: true, memberCount: (group.memberCount || 0) + 1 });
             }
         } catch (err) {
-            console.error("Помилка:", err);
-            alert("Помилка зміни статусу. Перевірте консоль.");
+            console.error("Error:", err);
+            alert("Error changing status. Check the console.");
         }
     };
 
-    // ===== ЛОГІКА ВИДАЛЕННЯ ГРУПИ =====
     const handleDeleteGroup = async () => {
         setIsDeleting(true);
         try {
             await deleteGroup(groupId);
             navigate('/groups');
         } catch (err) {
-            console.error("Помилка видалення:", err);
-            alert("Не вдалося видалити групу. Перевірте консоль.");
+            console.error("Deletion error:", err);
+            alert("Failed to delete community. Check console.");
             setIsDeleting(false);
         }
     };
 
-    // ===== ЛОГІКА СТВОРЕННЯ ПОСТА =====
     const handleCreatePost = async () => {
-        if (!newPostText.trim()) return alert("Пост не може бути порожнім!");
+        if (!newPostText.trim()) return alert("Post cannot be empty!");
         if (!requireAuth("Create Post", "You need to log in to create a post.")) return;
 
         setIsSubmittingPost(true);
@@ -349,7 +397,7 @@ export const GroupDetailsPage: React.FC = () => {
             setIsCreating(false);
         } catch (err) {
             console.error(err);
-            alert("Помилка при створенні поста. Сервер відхилив запит.");
+            alert("Error creating post. Server rejected request.");
         } finally {
             setIsSubmittingPost(false);
         }
@@ -396,7 +444,7 @@ export const GroupDetailsPage: React.FC = () => {
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{group.name}</h1>
                         <p className="text-gray-600 dark:text-gray-400 leading-relaxed mb-6">{group.description}</p>
 
-                        {/* === КНОПКА ЗАЛЕЖНО ВІД ТОГО, ЧИ ЮЗЕР ВЛАСНИК === */}
+                        
                         {isOwner ? (
                             <button
                                 onClick={() => {
@@ -442,9 +490,12 @@ export const GroupDetailsPage: React.FC = () => {
                                 <span className="text-gray-500 flex items-center gap-2"><Globe size={16}/> Privacy</span>
                                 <span className="font-medium text-gray-900 dark:text-white">{group.groupPrivacy}</span>
                             </div>
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-500 flex items-center gap-2"><Users size={16}/> Members</span>
-                                <span className="font-medium text-gray-900 dark:text-white">{group.memberCount || 0}</span>
+                            <div
+                                className="flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 p-2 -mx-2 rounded-lg transition-colors group"
+                                onClick={() => setIsMembersModalOpen(true)}
+                            >
+                                <span className="text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 flex items-center gap-2 transition-colors"><Users size={16}/> Members</span>
+                                <span className="font-medium text-gray-900 bg-gray-100 dark:bg-gray-800 dark:text-white px-2 py-0.5 rounded-md group-hover:bg-gray-200 dark:group-hover:bg-gray-700 transition-colors">{group.memberCount || 0}</span>
                             </div>
                             {group.location && (
                                 <div className="flex justify-between items-center">
@@ -457,7 +508,7 @@ export const GroupDetailsPage: React.FC = () => {
                 </div>
 
                 <div className="lg:col-span-2 space-y-6">
-                    {/* ФОРМА СТВОРЕННЯ ПОСТА */}
+                    
                     {isLoggedIn && (
                         <div className={`bg-white dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-sm overflow-hidden transition-all duration-300 ease-in-out ${isCreating ? `ring-2 ring-${accentColor}-500/50` : ''}`}>
                             {!isCreating ? (
@@ -505,7 +556,7 @@ export const GroupDetailsPage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* СПИСОК ПОСТІВ (ТЕПЕР ЧЕРЕЗ КОМПОНЕНТ) */}
+                    
                     <div className="space-y-6">
                         {posts.length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
@@ -521,7 +572,7 @@ export const GroupDetailsPage: React.FC = () => {
                                         key={post.id}
                                         post={post}
                                         currentUserId={currentUserId}
-                                        isPageOwner={isOwner} // Власник групи отримує права на редагування/видалення всіх постів
+                                        isPageOwner={isOwner}
                                         accentColor={accentColor}
                                         isLiked={currentUserId !== null && likedPosts.has(post.id)}
                                         onLikeToggle={handleLike}
@@ -538,7 +589,7 @@ export const GroupDetailsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* === МОДАЛКА РЕДАГУВАННЯ ГРУПИ === */}
+            
             {isEditModalOpen && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" onClick={() => setIsEditModalOpen(false)}>
                     <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-zoomIn relative" onClick={(e) => e.stopPropagation()}>
@@ -588,7 +639,7 @@ export const GroupDetailsPage: React.FC = () => {
                 <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
             )}
 
-            {/* === МОДАЛКА ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ГРУПИ === */}
+            
             {showDeleteConfirm && (
                 <div
                     className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
@@ -638,7 +689,7 @@ export const GroupDetailsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* === МОДАЛКА ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ПОСТА === */}
+            
             {postToDeleteId !== null && (
                 <div
                     className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
@@ -687,6 +738,17 @@ export const GroupDetailsPage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            {isMembersModalOpen && (
+                <MembersModal
+                    groupId={groupId}
+                    onClose={() => setIsMembersModalOpen(false)}
+                    accentColor={accentColor}
+                />
+            )}
         </div>
     );
 };
+
+
+

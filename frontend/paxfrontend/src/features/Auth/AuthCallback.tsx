@@ -51,11 +51,11 @@ export const AuthCallback = () => {
 
                     window.location.href = "/";
                 } else {
-                    console.error("Помилка отримання токена від Keycloak:", data);
+                    console.error("Error getting token from Keycloak:", data);
 
                 }
             })
-            .catch(err => console.error("Помилка мережі під час логіну:", err));
+            .catch(err => console.error("Network error during login:", err));
     }, [navigate]);
 
     return <div>Signing you in…</div>;

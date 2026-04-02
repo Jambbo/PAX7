@@ -11,25 +11,19 @@ import {
     AlertTriangle
 } from 'lucide-react';
 
-// ІМПОРТИ СЕРВІСІВ (Переконайся, що шляхи правильні)
-import {fetchAllPosts, createPost, deletePost, likePost, updatePost, sortPosts, unlikePost, addBookmark,
+import {fetchAllPosts, createPost, deletePost, likePost, updatePost, sortPosts, addBookmark,
     removeBookmark, Post} from '../postServise';
 import {fetchUsersCount, Group, fetchMyGroups} from '../../groups/groupsService';
 
 
-// ШЛЯХ ДО НОВОГО КОМПОНЕНТА POST ITEM (Перевір, чи правильний імпорт!)
 import { PostItem } from '../PostItem';
 
-// ============================================================================
-// КОМПОНЕНТ МОДАЛЬНОГО ВІКНА ДЛЯ ПЕРЕГЛЯДУ ФОТОГРАФІЙ (LIGHTBOX)
-// ============================================================================
 interface ImageModalProps {
     imageUrl: string;
     onClose: () => void;
 }
 
 const ImageModal: React.FC<ImageModalProps> = ({imageUrl, onClose}) => {
-    // Закриття вікна по кнопці Escape
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape') onClose();
@@ -41,7 +35,7 @@ const ImageModal: React.FC<ImageModalProps> = ({imageUrl, onClose}) => {
     return (
         <div
             className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"
-            onClick={onClose} // Закриття при кліку на фон
+            onClick={onClose}
         >
             <button
                 onClick={onClose}
@@ -54,19 +48,13 @@ const ImageModal: React.FC<ImageModalProps> = ({imageUrl, onClose}) => {
                 src={imageUrl}
                 alt="Full size"
                 className="max-w-full max-h-[90vh] rounded-lg shadow-2xl animate-zoomIn"
-                onClick={(e) => e.stopPropagation()} // Щоб клік по самому фото не закривав його
+                onClick={(e) => e.stopPropagation()}
             />
         </div>
     );
 };
 
-// ============================================================================
-// ГОЛОВНИЙ КОМПОНЕНТ HOME
-// ============================================================================
 export const Home: React.FC = () => {
-    const location = useLocation();
-    
-    // --- 1. СТЕЙТИ ТА ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -85,7 +73,6 @@ export const Home: React.FC = () => {
         };
     }, []);
 
-    // --- 2. СТЕЙТИ ДЛЯ СТАТИСТИКИ (КІЛЬКІСТЬ ЮЗЕРІВ) ---
     const [membersCount, setMembersCount] = useState<number | string>("...");
 
     useEffect(() => {
@@ -94,7 +81,7 @@ export const Home: React.FC = () => {
                 const count = await fetchUsersCount();
                 setMembersCount(Number(count));
             } catch (err) {
-                console.error("Не вдалося завантажити кількість юзерів", err);
+                console.error("Failed to load user count", err);
                 setMembersCount("?");
             }
         };
@@ -102,13 +89,11 @@ export const Home: React.FC = () => {
         loadMembers();
     }, []);
 
-    // --- 3. ГОЛОВНІ СТЕЙТИ ДЛЯ ПОСТІВ ТА UI ---
     const [posts, setPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
-    // --- 4. СТЕЙТИ АВТОРИЗАЦІЇ ТА СТВОРЕННЯ ПОСТА ---
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
@@ -118,17 +103,14 @@ export const Home: React.FC = () => {
     const [selectedGroupId, setSelectedGroupId] = useState<number | "">("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // --- 5. СТЕЙТИ ДЛЯ ВИДАЛЕННЯ ПОСТА ---
     const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
     const [isDeletingPost, setIsDeletingPost] = useState(false);
 
-    // --- 6. СТЕЙТ ДЛЯ ЛАЙКІВ (ЗБЕРЕЖЕННЯ В LOCALSTORAGE) ---
     const [likedPosts, setLikedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_liked_posts');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // ФІЛЬТРУЄМО ЖОРСТКО: пропускаємо ТІЛЬКИ справжні числа!
                 const validIds = parsed.filter((id: any) => typeof id === 'number' && !isNaN(id));
                 return new Set<number>(validIds);
             } catch (e) {
@@ -137,7 +119,6 @@ export const Home: React.FC = () => {
         }
         return new Set<number>();
     });
-    // Стейт для збережених постів (закладок)
     const [savedPosts, setSavedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_saved_posts');
         if (saved) {
@@ -157,25 +138,20 @@ export const Home: React.FC = () => {
     }, [savedPosts]);
 
     useEffect(() => {
-        // Оновлюємо localStorage щоразу, коли змінюється набір лайків
         localStorage.setItem('pax_liked_posts', JSON.stringify(Array.from(likedPosts)));
     }, [likedPosts]);
 
-    // --- 7. ЗАВАНТАЖЕННЯ ДАНИХ ПРИ СТАРТІ ---
     useEffect(() => {
-        // Перевіряємо, чи юзер авторизований
         const token = localStorage.getItem("access_token");
         if (token && token !== "undefined") {
             setIsLoggedIn(true);
             try {
-                // Дістаємо ID поточного юзера з токена
                 const payload = JSON.parse(atob(token.split('.')[1]));
                 setCurrentUserId(payload.sub);
             } catch (e) {
-                console.error("Помилка парсингу токена", e);
+                console.error("Token parsing error", e);
             }
 
-            // Завантажуємо групи юзера для випадаючого списку при створенні поста
             fetchMyGroups().then(groups => {
                 setMyGroups(groups);
                 if (groups.length > 0) {
@@ -187,7 +163,6 @@ export const Home: React.FC = () => {
             setCurrentUserId(null);
         }
 
-        // Завантажуємо всі пости з бекенду
         const loadPosts = async () => {
             setIsLoading(true);
             setError(null);
@@ -195,8 +170,8 @@ export const Home: React.FC = () => {
                 const data = await fetchAllPosts();
                 setPosts(sortPosts(data, 'date'));
             } catch (err: any) {
-                console.error("Помилка завантаження постів:", err);
-                setError("Не вдалося завантажити останні обговорення.");
+                console.error("Error loading posts:", err);
+                setError("Failed to load latest discussions.");
             } finally {
                 setIsLoading(false);
             }
@@ -205,35 +180,10 @@ export const Home: React.FC = () => {
         loadPosts();
     }, []);
 
-    // 8. Auto-scroll to post if hash presents in URL
-    useEffect(() => {
-        if (!isLoading && posts.length > 0 && location.hash) {
-            const id = location.hash.substring(1);
-            if (id.startsWith('post-')) {
-                const el = document.getElementById(id);
-                if (el) {
-                    setTimeout(() => {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        // Add temporary highlight effect
-                        el.classList.add(`ring-2`, `ring-${accentColor}-500`);
-                        setTimeout(() => {
-                            el.classList.remove(`ring-2`, `ring-${accentColor}-500`);
-                        }, 2000);
-                    }, 300);
-                }
-            }
-        }
-    }, [isLoading, posts, accentColor, location.hash]);
 
-
-    // ============================================================================
-    // ОБРОБНИКИ ДІЙ (HANDLERS)
-    // ============================================================================
-
-    // СТВОРЕННЯ ПОСТА
     const handleCreatePost = async () => {
-        if (!newPostText.trim()) return alert("Пост не може бути порожнім!");
-        if (!selectedGroupId) return alert("Оберіть спільноту для публікації!");
+        if (!newPostText.trim()) return alert("Post cannot be empty!");
+        if (!selectedGroupId) return alert("Select a community to post to!");
 
         setIsSubmitting(true);
         try {
@@ -242,12 +192,11 @@ export const Home: React.FC = () => {
                 groupId: Number(selectedGroupId)
             });
 
-            // Find group name locally
             const group = myGroups.find(g => g.id === Number(selectedGroupId));
 
             const newPost = {
                 ...createdPost,
-                groupName: group?.name || "" // ensure it's always defined
+                groupName: group?.name || ""
             };
 
             setPosts([newPost, ...posts]);
@@ -256,13 +205,12 @@ export const Home: React.FC = () => {
             setIsCreating(false);
         } catch (err) {
             console.error(err);
-            alert("Error while creating post.");
+            alert("Error creating post. Server might have rejected the request.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    // ЛАЙК ТА ЗНЯТТЯ ЛАЙКУ (UNLIKE)
     const handleLike = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
@@ -276,9 +224,7 @@ export const Home: React.FC = () => {
         const postToUpdate = posts.find(p => p.id === postId);
         if (!postToUpdate) return;
 
-        // 1. МИТТЄВА ВІЗУАЛЬНА ЗМІНА (Оптимістичний UI)
         if (isLiked) {
-            // Візуально забираємо лайк
             setLikedPosts(prev => {
                 const next = new Set(prev);
                 next.delete(postId);
@@ -290,7 +236,6 @@ export const Home: React.FC = () => {
                 setProfileLikedPosts(prev => prev.filter(p => p.id !== postId));
             }
         } else {
-            // Візуально ставимо лайк
             setLikedPosts(prev => new Set(prev).add(postId));
             setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
 
@@ -299,17 +244,14 @@ export const Home: React.FC = () => {
             }
         }
 
-        // 2. ВІДПРАВЛЯЄМО ЄДИНИЙ ЗАПИТ НА БЕКЕНД
         try {
-            // Ми завжди викликаємо likePost, бо бекенд сам знає, що це Toggle (перемикач)
             const updatedPostFromServer = await likePost(postId);
 
-            // Опціонально: оновлюємо пост реальними даними з сервера, щоб цифри 100% збігалися
             if (updatedPostFromServer && updatedPostFromServer.id) {
                 setPosts(prev => prev.map(p => p.id === postId ? updatedPostFromServer : p));
             }
         } catch (err) {
-            console.error("Помилка при зміні лайку на сервері", err);
+            console.error("Error changing like status on server", err);
         }
     };
     const handleSaveToggle = async (postId: number, e: React.MouseEvent) => {
@@ -323,17 +265,15 @@ export const Home: React.FC = () => {
 
         const isSaved = savedPosts.has(postId);
 
-        // Візуально миттєво додаємо або забираємо прапорець (Оптимістичний UI)
         if (isSaved) {
             setSavedPosts(prev => { const next = new Set(prev); next.delete(postId); return next; });
-            try { await removeBookmark(postId); } catch (err) { console.error("Помилка видалення закладки"); }
+            try { await removeBookmark(postId); } catch (err) { console.error("Error deleting bookmark"); }
         } else {
             setSavedPosts(prev => new Set(prev).add(postId));
-            try { await addBookmark(postId); } catch (err) { console.error("Помилка додавання закладки"); }
+            try { await addBookmark(postId); } catch (err) { console.error("Error adding bookmark"); }
         }
     };
 
-    // ЗБЕРЕЖЕННЯ РЕДАГОВАНОГО ПОСТА
     const handleSaveEdit = async (postId: number, newText: string) => {
         const postToEdit = posts.find(p => p.id === postId);
         if (!postToEdit) return;
@@ -342,18 +282,17 @@ export const Home: React.FC = () => {
             const updatedPost = await updatePost(postId, {
                 id: postId,
                 text: newText,
-                groupId: postToEdit.groupId // Відправляємо оригінальний groupId
+                groupId: postToEdit.groupId
             });
 
             setPosts(posts.map(p => p.id === postId ? updatedPost : p));
         } catch (err) {
             console.error(err);
-            alert("Помилка збереження! Відкрий консоль (F12), щоб побачити точну причину від бекенду.");
-            throw err; // Прокидаємо помилку далі, щоб PostItem зняв стан завантаження
+            alert("Save error! Open console (F12) to see exact reason from backend.");
+            throw err;
         }
     };
 
-    // ВИДАЛЕННЯ ПОСТА (Після підтвердження у модалці)
     const confirmDeletePost = async () => {
         if (postToDeleteId === null) return;
         setIsDeletingPost(true);
@@ -362,18 +301,15 @@ export const Home: React.FC = () => {
             setPosts(posts.filter(p => p.id !== postToDeleteId));
             setPostToDeleteId(null);
         } catch (err) {
-            alert("Помилка при видаленні поста. Можливо, у вас немає прав.");
+            alert("Error deleting post. You might not have permission.");
         } finally {
             setIsDeletingPost(false);
         }
     };
 
-    // ============================================================================
-    // РЕНДЕР ГОЛОВНОЇ СТОРІНКИ
-    // ============================================================================
     return (
         <div className="max-w-7xl mx-auto pb-10">
-            {/* --- ВІТАЛЬНА СЕКЦІЯ --- */}
+            
             <div className="mb-8">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">
                     Welcome to <span className={`text-${accentColor}-600`}>PAX</span> Community
@@ -383,7 +319,7 @@ export const Home: React.FC = () => {
                 </p>
             </div>
 
-            {/* --- КАРТКИ СТАТИСТИКИ --- */}
+            
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div
                     className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-6 transition-colors`}>
@@ -430,7 +366,7 @@ export const Home: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- БЛОК СТВОРЕННЯ ПОСТА (Тільки для авторизованих) --- */}
+            
             {isLoggedIn && (
                 <div
                     className={`bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800/50 rounded-xl mb-8 shadow-sm overflow-hidden transition-all duration-300 ease-in-out ${isCreating ? `ring-2 ring-${accentColor}-500/50` : ''}`}>
@@ -516,7 +452,7 @@ export const Home: React.FC = () => {
                 </div>
             )}
 
-            {/* --- СТРІЧКА ПОСТІВ --- */}
+            
             <div
                 className="bg-white dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800/50 rounded-xl p-6 shadow-sm transition-colors">
                 <div className="flex items-center gap-2 mb-6">
@@ -544,14 +480,14 @@ export const Home: React.FC = () => {
                     </div>
                 )}
 
-                {/* --- СПИСОК ПОСТІВ (ЧЕРЕЗ КОМПОНЕНТ) --- */}
+                
                 <div className="space-y-6">
                     {!isLoading && !error && posts.map((post) => {
                         const isLiked = likedPosts.has(post.id);
 
                         return (
-                            <div key={post.id} id={`post-${post.id}`} className="flex flex-col mb-4 transition-all duration-500 rounded-2xl">
-                                {/* Назва групи акуратно НАД постом */}
+                            <div key={post.id} className="flex flex-col mb-4">
+                                
                                 {post.groupName && (
                                     <Link to={`/groups/${post.groupId}`} className="w-fit mb-2 ml-2 z-10">
             <span className={`inline-block text-xs font-bold bg-${accentColor}-100 dark:bg-${accentColor}-900/30 text-${accentColor}-700 dark:text-${accentColor}-300 px-3 py-1 rounded-full shadow-sm hover:bg-${accentColor}-200 dark:hover:bg-${accentColor}-900/50 transition-colors`}>
@@ -564,7 +500,6 @@ export const Home: React.FC = () => {
                                     key={post.id}
                                     post={post}
                                     currentUserId={currentUserId}
-                                    // Замість isOwner перевіряємо, чи є юзер автором цього поста
                                     isPageOwner={currentUserId !== null && String(post.authorId) === String(currentUserId)}
                                     accentColor={accentColor}
                                     isLiked={currentUserId !== null && likedPosts.has(post.id)}
@@ -581,7 +516,7 @@ export const Home: React.FC = () => {
                 </div>
             </div>
 
-            {/* --- МОДАЛЬНЕ ВІКНО: ПЕРЕГЛЯД ЗОБРАЖЕНЬ --- */}
+            
             {selectedImage && (
                 <ImageModal
                     imageUrl={selectedImage}
@@ -589,7 +524,7 @@ export const Home: React.FC = () => {
                 />
             )}
 
-            {/* --- МОДАЛЬНЕ ВІКНО: ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ --- */}
+            
             {postToDeleteId !== null && (
                 <div
                     className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn"

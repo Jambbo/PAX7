@@ -44,7 +44,7 @@ public class GroupServiceImpl implements GroupService {
     @Transactional(readOnly = true)
     public List<Group> getAll(Jwt jwt) {
         if(jwt==null){
-            return groupRepository.findAll();
+            return groupRepository.findAllVisibleGroups();
         }else{
             return groupRepository.findGroupsUserNotMemberOf(jwt.getSubject());
         }

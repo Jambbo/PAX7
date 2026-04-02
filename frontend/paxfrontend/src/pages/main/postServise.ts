@@ -13,11 +13,9 @@ export interface Post {
     groupId?: number;
     groupName?: string;
 
-    // Масив зображень
     images?: string[];
 }
 
-// === ФУНКЦІЯ ДЛЯ ОТРИМАННЯ ВСІХ ПОСТІВ (ВІДНОВЛЕНО) ===
 export async function fetchAllPosts(): Promise<Post[]> {
     const token = localStorage.getItem("access_token");
     const headers: HeadersInit = {
@@ -25,7 +23,6 @@ export async function fetchAllPosts(): Promise<Post[]> {
         "Content-Type": "application/json"
     };
 
-    // Додаємо відключення кешу, щоб на головній сторінці пости теж не зникали
     const response = await fetch(`${API_URL}/all?t=${new Date().getTime()}`, {
         method: "GET",
         headers,
@@ -34,13 +31,12 @@ export async function fetchAllPosts(): Promise<Post[]> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося завантажити всі пости");
+        throw new Error("Failed to load all posts");
     }
 
     return response.json();
 }
 
-// === ФУНКЦІЯ ДЛЯ ОТРИМАННЯ ПОСТІВ ГРУПИ ===
 export async function fetchGroupPosts(groupId: number): Promise<Post[]> {
     const token = localStorage.getItem("access_token");
     const headers: HeadersInit = {
@@ -56,7 +52,7 @@ export async function fetchGroupPosts(groupId: number): Promise<Post[]> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося завантажити пости групи");
+        throw new Error("Failed to load community posts");
     }
 
     return response.json();
@@ -68,10 +64,9 @@ export interface CreatePostDto {
     groupId: number;
 }
 
-// === ФУНКЦІЯ СТВОРЕННЯ ПОСТА ===
 export async function createPost(data: CreatePostDto): Promise<Post> {
     const token = localStorage.getItem("access_token");
-    if (!token) throw new Error("Ви не авторизовані");
+    if (!token) throw new Error("You are not authorized");
 
     const response = await fetch(API_URL, {
         method: "POST",
@@ -83,7 +78,7 @@ export async function createPost(data: CreatePostDto): Promise<Post> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося створити пост");
+        throw new Error("Failed to create post");
     }
 
     let newPost = await response.json();
@@ -97,11 +92,11 @@ export async function createPost(data: CreatePostDto): Promise<Post> {
                 const allPosts = await allPostsRes.json();
                 const matchedPost = allPosts.find((p: any) => p.text === data.text);
                 if (matchedPost && matchedPost.id) {
-                    newPost = matchedPost; // Підміняємо на пост зі справжнім ID
+                    newPost = matchedPost;
                 }
             }
         } catch (e) {
-            console.error("Не вдалося витягнути ID для нового поста", e);
+            console.error("Failed to extract ID for the new post", e);
         }
     }
 
@@ -117,10 +112,9 @@ export async function deletePost(postId: number): Promise<void> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося видалити пост");
+        throw new Error("Failed to delete post");
     }
 }
-// Це тепер наш єдиний перемикач (Toggle) для лайків і анлайків
 export async function likePost(postId: number): Promise<Post> {
     const token = localStorage.getItem("access_token");
     const headers: HeadersInit = {
@@ -133,14 +127,13 @@ export async function likePost(postId: number): Promise<Post> {
     });
 
     if (!response.ok) {
-        throw new Error("Не вдалося змінити статус лайку");
+        throw new Error("Failed to change like status");
     }
 
     const text = await response.text();
     return text ? JSON.parse(text) : { id: postId };
 }
 
-// === ФУНКЦІЯ ОНОВЛЕННЯ (РЕДАГУВАННЯ) ПОСТА ===
 export async function updatePost(postId: number, data: UpdatePostDto): Promise<Post> {
     const token = localStorage.getItem("access_token");
     const headers: HeadersInit = {
@@ -155,10 +148,9 @@ export async function updatePost(postId: number, data: UpdatePostDto): Promise<P
     });
 
     if (!response.ok) {
-        // Читаємо відповідь від бекенду, щоб точно знати, яке поле не пройшло валідацію
         const errorData = await response.text();
-        console.error("Бекенд відхилив запит (400):", errorData);
-        throw new Error("Не вдалося оновити пост");
+        console.error("Backend rejected request (400):", errorData);
+        throw new Error("Failed to update post");
     }
 
     return response.json();
@@ -172,7 +164,7 @@ export interface Comment {
     authorUsername: string;
     postId: number;
     likes: number;
-    dislikes?: number; // Додали поле для дизлайків
+    dislikes?: number;
     createdAt: string;
 }
 
@@ -189,7 +181,7 @@ export async function fetchComments(postId: number): Promise<Comment[]> {
         mode: "cors"
     });
 
-    if (!response.ok) throw new Error("Не вдалося завантажити коментарі");
+    if (!response.ok) throw new Error("Failed to load comments");
     return response.json();
 }
 
@@ -258,7 +250,6 @@ export async function likeComment(postId: number, commentId: number): Promise<Co
     return response.json();
 }
 
-// НОВЕ: Дизлайк коментаря
 export async function dislikeComment(postId: number, commentId: number): Promise<Comment> {
     const token = localStorage.getItem("access_token");
     if (!token || token === "undefined") throw new Error("Unauthorized");
@@ -274,7 +265,6 @@ export async function dislikeComment(postId: number, commentId: number): Promise
     return response.json();
 }
 
-// НОВЕ: Зняття лайку або дизлайку
 export async function removeCommentInteraction(postId: number, commentId: number): Promise<Comment> {
     const token = localStorage.getItem("access_token");
     if (!token || token === "undefined") throw new Error("Unauthorized");
@@ -295,11 +285,9 @@ export type PostSortType = 'date' | 'likes';
 export function sortPosts(posts: Post[], sortBy: PostSortType = 'date'): Post[] {
     return [...posts].sort((a, b) => {
         if (sortBy === 'likes') {
-            // Сортування за лайками (найбільше -> найменше)
             return (b.likes || 0) - (a.likes || 0);
         }
 
-        // Сортування за датою за замовчуванням (найновіші -> найстаріші)
         const dateA = new Date(a.createdAt).getTime();
         const dateB = new Date(b.createdAt).getTime();
         return dateB - dateA;
@@ -332,7 +320,7 @@ export async function removeBookmark(postId: number): Promise<void> {
 
 export async function fetchBookmarks(): Promise<Post[]> {
     const token = localStorage.getItem("access_token");
-    if (!token || token === "undefined") return []; // Гостям закладки недоступні
+    if (!token || token === "undefined") return [];
 
     const response = await fetch(`${API_URL}/bookmarks`, {
         method: "GET",

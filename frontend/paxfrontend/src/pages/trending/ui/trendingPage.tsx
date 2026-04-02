@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { TrendingUp, Flame, ArrowUp, Award, Users, Hash, Loader2, X, AlertTriangle } from 'lucide-react';
 
-// === ІМПОРТИ РЕАЛЬНИХ ДАНИХ (Перевір шляхи!) ===
 import { fetchAllPosts, sortPosts, likePost, deletePost, updatePost, Post } from '../../main/postServise';
 import { PostItem } from '../../main/PostItem';
 import { AuthModal } from '../../../widgets/AuthModal/AuthModal';
 
-// --- Модалка для перегляду фото ---
 interface ImageModalProps {
     imageUrl: string;
     onClose: () => void;
@@ -27,10 +26,8 @@ const ImageModal: React.FC<ImageModalProps> = ({ imageUrl, onClose }) => {
         </div>
     );
 };
-// ----------------------------------
 
 export const TrendingPage: React.FC = () => {
-    // --- ЛОГІКА КОЛЬОРІВ ---
     const [accentColor, setAccentColor] = useState(() => localStorage.getItem('site_accent_color') || 'purple');
 
     useEffect(() => {
@@ -43,14 +40,25 @@ export const TrendingPage: React.FC = () => {
         };
     }, []);
 
-    // --- СТЕЙТИ РЕАЛЬНИХ ДАНИХ ---
-    const [activeFilter, setActiveFilter] = useState<'hot' | 'rising' | 'top'>('hot');
+    const location = useLocation();
+
+    const [activeFilter, setActiveFilter] = useState<'hot' | 'rising' | 'top' | 'hashtag'>('hot');
+    const [searchHashtag, setSearchHashtag] = useState<string>('');
+
+    useEffect(() => {
+        const queryParams = new URLSearchParams(location.search);
+        const hashtagParam = queryParams.get('hashtag');
+        if (hashtagParam) {
+            setSearchHashtag(hashtagParam);
+            setActiveFilter('hashtag');
+        }
+    }, [location.search]);
+
     const [allPosts, setAllPosts] = useState<Post[]>([]);
     const [displayedPosts, setDisplayedPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-    // Стейт лайків поточного юзера
     const [likedPosts, setLikedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_liked_posts');
         if (saved) {
@@ -67,12 +75,10 @@ export const TrendingPage: React.FC = () => {
         localStorage.setItem('pax_liked_posts', JSON.stringify(Array.from(likedPosts)));
     }, [likedPosts]);
 
-    // Модалки
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
     const [isDeletingPost, setIsDeletingPost] = useState(false);
 
-    // Завантаження постів
     useEffect(() => {
         const loadData = async () => {
             setIsLoading(true);
@@ -88,7 +94,7 @@ export const TrendingPage: React.FC = () => {
                 const data = await fetchAllPosts();
                 setAllPosts(data);
             } catch (error) {
-                console.error("Помилка завантаження трендів", error);
+                console.error("Error loading trends", error);
             } finally {
                 setIsLoading(false);
             }
@@ -96,7 +102,6 @@ export const TrendingPage: React.FC = () => {
         loadData();
     }, []);
 
-    // Логіка фільтрації (Hot, Rising, Top)
     useEffect(() => {
         if (allPosts.length === 0) return;
 
@@ -104,29 +109,30 @@ export const TrendingPage: React.FC = () => {
         const now = new Date().getTime();
 
         if (activeFilter === 'hot') {
-            // Hot: пости за останні 7 днів, відсортовані за лайками
             const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
             const recentPosts = filtered.filter(p => new Date(p.createdAt).getTime() > sevenDaysAgo);
-            // Якщо нових постів мало, беремо всі
             const postsToSort = recentPosts.length > 0 ? recentPosts : filtered;
             setDisplayedPosts(sortPosts(postsToSort, 'likes'));
         } else if (activeFilter === 'top') {
-            // Top: всі пости за весь час, сортування за лайками
             setDisplayedPosts(sortPosts(filtered, 'likes'));
         } else if (activeFilter === 'rising') {
-            // Rising: просто найновіші пости
             setDisplayedPosts(sortPosts(filtered, 'date'));
+        } else if (activeFilter === 'hashtag') {
+            const lowerSearch = searchHashtag.toLowerCase().replace('#', '');
+            if (!lowerSearch) {
+                setDisplayedPosts([]);
+            } else {
+                setDisplayedPosts(sortPosts(filtered.filter(p => p.text.toLowerCase().includes(`#${lowerSearch}`)), 'date'));
+            }
         }
-    }, [activeFilter, allPosts]);
+    }, [activeFilter, allPosts, searchHashtag]);
 
-    // --- ЖИВА СТАТИСТИКА (Community Stats) ---
     const uniqueAuthors = new Set(allPosts.map(p => p.authorId)).size;
     const today = new Date().toDateString();
     const postsToday = allPosts.filter(p => new Date(p.createdAt).toDateString() === today).length;
     const totalLikes = allPosts.reduce((acc, p) => acc + (p.likes || 0), 0);
     const engagementRate = Math.min(100, Math.round((totalLikes / Math.max(1, allPosts.length)) * 15));
 
-    // --- ЖИВІ ХЕШТЕГИ (Trending Topics) ---
     const extractHashtags = () => {
         const counts: Record<string, number> = {};
         allPosts.forEach(post => {
@@ -139,11 +145,10 @@ export const TrendingPage: React.FC = () => {
         return Object.entries(counts)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count)
-            .slice(0, 5); // Беремо ТОП-5
+            .slice(0, 5);
     };
     const trendingHashtags = extractHashtags();
 
-    // --- ОБРОБНИКИ ДІЙ (Оптимістичний UI) ---
     const handleLike = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
         const token = localStorage.getItem("access_token");
@@ -154,7 +159,6 @@ export const TrendingPage: React.FC = () => {
 
         const isLiked = likedPosts.has(postId);
 
-        // Візуальне оновлення
         if (isLiked) {
             setLikedPosts(prev => { const next = new Set(prev); next.delete(postId); return next; });
             setDisplayedPosts(prev => prev.map(p => p.id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p));
@@ -168,7 +172,7 @@ export const TrendingPage: React.FC = () => {
         try {
             await likePost(postId);
         } catch (err) {
-            console.error("Помилка при зміні лайку на сервері", err);
+            console.error("Error changing like status on server", err);
         }
     };
 
@@ -187,7 +191,7 @@ export const TrendingPage: React.FC = () => {
             setAllPosts(prev => prev.filter(p => p.id !== postToDeleteId));
             setPostToDeleteId(null);
         } catch (err) {
-            alert("Помилка видалення поста.");
+            alert("Error deleting post.");
         } finally {
             setIsDeletingPost(false);
         }
@@ -196,7 +200,8 @@ export const TrendingPage: React.FC = () => {
     const filters = [
         { id: 'hot', label: 'Hot', icon: Flame, color: 'text-orange-500' },
         { id: 'rising', label: 'Rising', icon: TrendingUp, color: 'text-green-500' },
-        { id: 'top', label: 'Top', icon: Award, color: 'text-purple-500' }
+        { id: 'top', label: 'Top', icon: Award, color: 'text-purple-500' },
+        { id: 'hashtag', label: 'Hashtag', icon: Hash, color: 'text-blue-500' }
     ];
 
     if (isLoading) {
@@ -205,7 +210,7 @@ export const TrendingPage: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto pb-10">
-            {/* Header */}
+            
             <div className="mb-8">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3 transition-colors">
                     <TrendingUp className={`text-${accentColor}-500`} size={40} />
@@ -217,14 +222,14 @@ export const TrendingPage: React.FC = () => {
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8">
-                {/* Main Content (Posts) */}
+                
                 <div className="flex-1">
-                    {/* Filter Tabs */}
+                    
                     <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-2 flex gap-2 mb-6 transition-colors shadow-sm">
                         {filters.map((filter) => (
                             <button
                                 key={filter.id}
-                                onClick={() => setActiveFilter(filter.id as 'hot' | 'rising' | 'top')}
+                                onClick={() => setActiveFilter(filter.id as 'hot' | 'rising' | 'top' | 'hashtag')}
                                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-all font-medium ${
                                     activeFilter === filter.id
                                         ? `bg-${accentColor}-600 text-white shadow-lg shadow-${accentColor}-500/20`
@@ -237,18 +242,41 @@ export const TrendingPage: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* Posts List */}
+                    {activeFilter === 'hashtag' && (
+                        <div className="mb-6 relative animate-fadeIn">
+                            <Hash className={`absolute left-4 top-1/2 -translate-y-1/2 text-gray-400`} size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search by hashtag... (e.g. #news)"
+                                value={searchHashtag}
+                                onChange={(e) => setSearchHashtag(e.target.value)}
+                                className={`w-full bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl pl-12 pr-4 py-3 text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-${accentColor}-500 transition-shadow`}
+                            />
+                        </div>
+                    )}
+
+                    
                     <div className="space-y-6">
                         {displayedPosts.length === 0 ? (
                             <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
-                                <Flame size={48} className="mx-auto text-gray-400 mb-3 opacity-50" />
-                                <h3 className="text-lg font-bold text-gray-900 dark:text-white">Nothing trending right now</h3>
-                                <p className="text-gray-500">Be the first to post something amazing!</p>
+                                {activeFilter === 'hashtag' ? (
+                                    <>
+                                        <Hash size={48} className="mx-auto text-gray-400 mb-3 opacity-50" />
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">No posts match your search</h3>
+                                        <p className="text-gray-500">Try searching for a different hashtag</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Flame size={48} className="mx-auto text-gray-400 mb-3 opacity-50" />
+                                        <h3 className="text-lg font-bold text-gray-900 dark:text-white">Nothing trending right now</h3>
+                                        <p className="text-gray-500">Be the first to post something amazing!</p>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             displayedPosts.map((post, index) => (
                                 <div key={post.id} className="flex gap-4 items-start animate-fadeIn">
-                                    {/* Значок рейтингу збоку (в стилі Trending) */}
+                                    
                                     <div className={`hidden md:flex flex-shrink-0 w-12 h-12 bg-white dark:bg-gray-800 border-2 border-${accentColor}-500/30 rounded-2xl items-center justify-center shadow-sm text-${accentColor}-600 dark:text-${accentColor}-400 font-bold text-xl mt-4`}>
                                         #{index + 1}
                                     </div>
@@ -271,9 +299,9 @@ export const TrendingPage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Sidebar */}
+                
                 <div className="lg:w-80 space-y-6">
-                    {/* Live Trending Topics (Хештеги) */}
+                    
                     <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-6 shadow-sm transition-colors">
                         <div className="flex items-center gap-2 mb-4">
                             <Hash className={`text-${accentColor}-500`} size={20} />
@@ -284,6 +312,10 @@ export const TrendingPage: React.FC = () => {
                                 trendingHashtags.map((topic, index) => (
                                     <button
                                         key={topic.name}
+                                        onClick={() => {
+                                            setSearchHashtag(topic.name);
+                                            setActiveFilter('hashtag');
+                                        }}
                                         className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-all group"
                                     >
                                         <div className={`w-8 h-8 bg-${accentColor}-100 dark:bg-${accentColor}-900/30 rounded-lg flex items-center justify-center text-${accentColor}-600 dark:text-${accentColor}-400 font-bold text-sm shadow-sm`}>
@@ -304,7 +336,7 @@ export const TrendingPage: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Live Community Stats */}
+                    
                     <div className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-6 transition-colors`}>
                         <div className="flex items-center gap-2 mb-4">
                             <Users className={`text-${accentColor}-600 dark:text-${accentColor}-400`} size={20} />
@@ -343,7 +375,7 @@ export const TrendingPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Модалки */}
+            
             {selectedImage && <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />}
 
             {postToDeleteId !== null && (

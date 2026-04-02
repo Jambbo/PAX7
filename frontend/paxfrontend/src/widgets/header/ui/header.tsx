@@ -41,7 +41,6 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Логіка виходу з акаунту
     const handleLogout = () => {
         localStorage.removeItem("access_token");
         window.location.href = "/";
@@ -96,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                                 <ChevronDown size={16} className={`text-gray-500 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
                             </button>
 
-                            {/* Тіло випадаючого меню */}
+                            
                             {isDropdownOpen && (
                                 <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-xl py-2 z-50 animate-fadeIn overflow-hidden">
                                     <Link
@@ -132,7 +131,7 @@ export const Header: React.FC<HeaderProps> = ({ isAuthenticated }) => {
                     )}
                 </div>
 
-                {/* Mobile menu icon */}
+                
                 <button className={`md:hidden flex items-center text-gray-900 dark:text-white hover:text-${accentColor}-600 transition`}>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"

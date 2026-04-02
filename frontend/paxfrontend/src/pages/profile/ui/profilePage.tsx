@@ -3,20 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import {
     User, Mail, MapPin, Calendar, Link as LinkIcon, Edit3, Settings,
     Camera, Heart, MessageSquare, Eye, Bookmark, Users, Award, TrendingUp,
-    Globe, Hash, Loader2, Trash2, AlertTriangle, X, Image as ImageIcon
+    Globe, Hash, Loader2, Trash2, AlertTriangle, X, Image as ImageIcon, Check
 } from 'lucide-react';
 
-// ПЕРЕВІР ЦІ ШЛЯХИ ДО СВОЇХ СЕРВІСІВ!
-import { fetchUserById } from '../userService';
-import {
-    fetchAllPosts, deletePost, updatePost, likePost, sortPosts, Post,
-    addBookmark, removeBookmark
-} from '../../main/postServise';
+import { fetchUserById, UserData, sendFriendRequest, checkFriendshipStatus, fetchMyFriends, removeFriendCall } from '../userService';
+import { fetchAllPosts, updatePost, sortPosts, likePost, fetchBookmarks, addBookmark, removeBookmark, deletePost, Post } from '../../main/postServise';
 
-// ШЛЯХ ДО НОВОГО КОМПОНЕНТА POST ITEM
 import { PostItem } from '../../main/PostItem';
 
-// --- Модалка для перегляду фото ---
 interface ImageModalProps {
     imageUrl: string;
     onClose: () => void;
@@ -37,7 +31,6 @@ const ImageModal: React.FC<ImageModalProps> = ({ imageUrl, onClose }) => {
         </div>
     );
 };
-// ----------------------------------
 
 export const ProfilePage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -45,27 +38,37 @@ export const ProfilePage: React.FC = () => {
 
     const [accentColor, setAccentColor] = useState(() => localStorage.getItem('site_accent_color') || 'purple');
     const [user, setUser] = useState<any>(null);
-    const [posts, setPosts] = useState<Post[]>([]); // Власні пости юзера
-    const [profileLikedPosts, setProfileLikedPosts] = useState<Post[]>([]); // Пости, які лайкнув САМЕ ЦЕЙ юзер
+    const [posts, setPosts] = useState<Post[]>([]);
+    const [wallPosts, setWallPosts] = useState<Post[]>([]);
+    const [wallGroupId, setWallGroupId] = useState<number | null>(null);
+    const [profileLikedPosts, setProfileLikedPosts] = useState<Post[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+
+    const [newWallPostText, setNewWallPostText] = useState("");
+    const [isPostingToWall, setIsPostingToWall] = useState(false);
 
     const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-    // Стейт для перемикання вкладок
-    const [activeTab, setActiveTab] = useState<'Posts' | 'Media' | 'Likes'>('Posts');
+    const [activeTab, setActiveTab] = useState<'Wall' | 'Posts' | 'Media' | 'Likes' | 'Friends'>('Wall');
+    
+    const [friendshipStatus, setFriendshipStatus] = useState<string>('NONE');
+    const [myFriends, setMyFriends] = useState<UserData[]>([]);
+    const [toastMessage, setToastMessage] = useState<{title: string, message: string} | null>(null);
 
-    // Модалки
+    const showToast = (title: string, message: string) => {
+        setToastMessage({ title, message });
+        setTimeout(() => setToastMessage(null), 3000);
+    };
+
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const [postToDeleteId, setPostToDeleteId] = useState<number | null>(null);
     const [isDeletingPost, setIsDeletingPost] = useState(false);
 
-    // Локальні лайки поточного користувача (щоб кнопочка "сердечко" світилась червоним)
     const [likedPosts, setLikedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_liked_posts');
         if (saved) {
             try {
                 const parsed = JSON.parse(saved);
-                // ФІЛЬТРУЄМО ЖОРСТКО: пропускаємо ТІЛЬКИ справжні числа!
                 const validIds = parsed.filter((id: any) => typeof id === 'number' && !isNaN(id));
                 return new Set<number>(validIds);
             } catch (e) {
@@ -75,7 +78,6 @@ export const ProfilePage: React.FC = () => {
         return new Set<number>();
     });
 
-    // Стейт для збережених постів (закладок)
     const [savedPosts, setSavedPosts] = useState<Set<number>>(() => {
         const saved = localStorage.getItem('pax_saved_posts');
         if (saved) {
@@ -99,7 +101,9 @@ export const ProfilePage: React.FC = () => {
     }, [likedPosts]);
 
     useEffect(() => {
-        const handleStorageChange = () => setAccentColor(localStorage.getItem('site_accent_color') || 'purple');
+        const handleStorageChange = () => {
+            setAccentColor(localStorage.getItem('site_accent_color') || 'blue');
+        };
         window.addEventListener('storage', handleStorageChange);
         window.addEventListener('accent-color-change', handleStorageChange);
         return () => {
@@ -118,14 +122,13 @@ export const ProfilePage: React.FC = () => {
                 if (token && token !== "undefined") {
                     try {
                         const payload = JSON.parse(atob(token.split('.')[1]));
-                        myId = payload.sub; // username або email
+                        myId = payload.sub;
                         setCurrentUserId(myId);
                     } catch (e) {
-                        console.error("Помилка парсингу токена", e);
+                        console.error("Token parsing error", e);
                     }
                 }
 
-                // 1. Завантажуємо профіль
                 let userData = null;
 
                 if (profileId === 'me' || profileId === 'undefined') {
@@ -133,7 +136,7 @@ export const ProfilePage: React.FC = () => {
                         try {
                             userData = await fetchUserById(myId);
                         } catch (err) {
-                            console.warn("Не вдалося знайти юзера напряму, шукаємо в базі...");
+                            console.warn("Failed to find user directly, searching in DB...");
                         }
 
                         if (!userData) {
@@ -151,7 +154,7 @@ export const ProfilePage: React.FC = () => {
                                     );
                                 }
                             } catch (e) {
-                                console.error("Помилка при резервному пошуку юзера", e);
+                                console.error("Error on fallback user search", e);
                             }
                         }
 
@@ -165,39 +168,66 @@ export const ProfilePage: React.FC = () => {
 
                 setUser(userData);
 
-                // 2. Завантажуємо пости
                 const fetchedAllPosts = await fetchAllPosts().catch(() => []);
 
                 if (userData) {
-                    // Власні пости (СОРТУЄМО ПО ДАТІ)
+                    try {
+                        const tokenHeader = token && token !== "undefined" ? { "Authorization": `Bearer ${token}` } : {};
+                        const wallRes = await fetch(`http://localhost:8081/api/v1/users/${userData.id}/wall`, { headers: tokenHeader as any });
+                        if (wallRes.ok) {
+                            const wallData = await wallRes.json();
+                            const wgId = wallData.groupId;
+                            setWallGroupId(wgId);
+                            try {
+                                const wallPostsRes = await fetch(`http://localhost:8081/api/v1/posts/group/${wgId}?t=${Date.now()}`, {
+                                    headers: tokenHeader as any
+                                });
+                                if (wallPostsRes.ok) {
+                                    const groupPosts = await wallPostsRes.json();
+                                    setWallPosts(sortPosts(groupPosts, 'date'));
+                                } else {
+                                    setWallPosts(sortPosts(fetchedAllPosts.filter(p => p.groupId === wgId), 'date'));
+                                }
+                            } catch (e) {
+                                setWallPosts(sortPosts(fetchedAllPosts.filter(p => p.groupId === wgId), 'date'));
+                            }
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch wall group id", e);
+                    }
+
                     const userPosts = fetchedAllPosts.filter(p => String(p.authorId) === String(userData.id));
                     setPosts(sortPosts(userPosts, 'date'));
 
-                    // --- НОВЕ: Завантажуємо пости, які лайкнув саме ВЛАСНИК ПРОФІЛЮ ---
+
+                    if (String(userData.id) !== String(myId)) {
+                        const res = await checkFriendshipStatus(String(userData.id)).catch(() => ({ status: 'NONE' }));
+                        setFriendshipStatus(res.status);
+                    } else {
+                        const friendsRes = await fetchMyFriends().catch(() => []);
+                        setMyFriends(friendsRes);
+                    }
+
                     try {
                         const headers: HeadersInit = { "Content-Type": "application/json" };
                         if (token && token !== "undefined") headers["Authorization"] = `Bearer ${token}`;
 
-                        // Запит на бекенд: отримати лайки конкретного юзера (userData.id)
                         const likesRes = await fetch(`http://localhost:8081/api/v1/users/${userData.id}/likedPosts`, { headers });
 
                         if (likesRes.ok) {
                             const likedData = await likesRes.json();
-                            // СОРТУЄМО ЛАЙКНУТІ ПОСТИ
                             setProfileLikedPosts(sortPosts(likedData, 'date'));
                         } else {
-                            // FALLBACK: Якщо ендпоінту на бекенді ще немає, а профіль мій - показуємо з локал сторедж
                             if (String(userData.id) === String(currentUserId) || myId === profileId || profileId === 'me') {
-                                const myLocalLikes = fetchedAllPosts.filter(p => likedPosts.has(p.id));
+                                const myLocalLikes = fetchedAllPosts.filter(p => likedPosts.has(p.id) && !p.groupId);
                                 setProfileLikedPosts(sortPosts(myLocalLikes, 'date'));
                             } else {
                                 setProfileLikedPosts([]);
                             }
                         }
                     } catch (e) {
-                        // FALLBACK на випадок помилки мережі
                         if (String(userData.id) === String(currentUserId) || myId === profileId || profileId === 'me') {
-                            const myLocalLikes = fetchedAllPosts.filter(p => likedPosts.has(p.id));
+                            const myLocalLikes = fetchedAllPosts.filter(p => likedPosts.has(p.id) && !p.groupId);
                             setProfileLikedPosts(sortPosts(myLocalLikes, 'date'));
                         } else {
                             setProfileLikedPosts([]);
@@ -206,7 +236,7 @@ export const ProfilePage: React.FC = () => {
                 }
 
             } catch (err) {
-                console.error("Помилка завантаження профілю:", err);
+                console.error("Error loading profile:", err);
             } finally {
                 setIsLoading(false);
             }
@@ -217,9 +247,7 @@ export const ProfilePage: React.FC = () => {
 
     const isOwner = currentUserId !== null && user !== null && String(user.id) === String(currentUserId);
 
-    // === ЛОГІКА ПОСТІВ ===
 
-    // 1. Окремий обробник для лайків
     const handleLike = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
@@ -230,10 +258,9 @@ export const ProfilePage: React.FC = () => {
         }
 
         const isLiked = likedPosts.has(postId);
-        const postToUpdate = posts.find(p => p.id === postId) || profileLikedPosts.find(p => p.id === postId);
+        const postToUpdate = posts.find(p => p.id === postId) || profileLikedPosts.find(p => p.id === postId) || wallPosts.find(p => p.id === postId);
         if (!postToUpdate) return;
 
-        // Оптимістичний UI для лайків
         if (isLiked) {
             setLikedPosts(prev => {
                 const next = new Set(prev);
@@ -242,20 +269,21 @@ export const ProfilePage: React.FC = () => {
             });
             setPosts(posts.map(p => p.id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p));
             setProfileLikedPosts(profileLikedPosts.map(p => p.id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p));
+            setWallPosts(wallPosts.map(p => p.id === postId ? { ...p, likes: Math.max(0, p.likes - 1) } : p));
         } else {
             setLikedPosts(prev => new Set(prev).add(postId));
             setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
             setProfileLikedPosts(profileLikedPosts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
+            setWallPosts(wallPosts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
         }
 
         try {
             await likePost(postId);
         } catch (err) {
-            console.error("Помилка лайку", err);
+            console.error("Like error", err);
         }
     };
 
-    // 2. Окремий обробник для закладок (ВИГНАННИЙ З handleLike)
     const handleSaveToggle = async (postId: number, e: React.MouseEvent) => {
         e.stopPropagation();
 
@@ -267,7 +295,6 @@ export const ProfilePage: React.FC = () => {
 
         const isSaved = savedPosts.has(postId);
 
-        // Оптимістичний UI для закладок
         if (isSaved) {
             setSavedPosts(prev => {
                 const next = new Set(prev);
@@ -282,7 +309,7 @@ export const ProfilePage: React.FC = () => {
     };
 
     const handleSaveEdit = async (postId: number, newText: string) => {
-        const postToEdit = posts.find(p => p.id === postId) || profileLikedPosts.find(p => p.id === postId);
+        const postToEdit = posts.find(p => p.id === postId) || profileLikedPosts.find(p => p.id === postId) || wallPosts.find(p => p.id === postId);
         if (!postToEdit) return;
 
         const updatedPost = await updatePost(postId, {
@@ -292,21 +319,55 @@ export const ProfilePage: React.FC = () => {
         });
 
         setPosts(posts.map(p => p.id === postId ? updatedPost : p));
+        setWallPosts(wallPosts.map(p => p.id === postId ? updatedPost : p));
         setProfileLikedPosts(profileLikedPosts.map(p => p.id === postId ? updatedPost : p));
     };
 
     const confirmDeletePost = async () => {
-        if (postToDeleteId === null) return;
+        if (!postToDeleteId) return;
         setIsDeletingPost(true);
         try {
             await deletePost(postToDeleteId);
-            setPosts(posts.filter(p => p.id !== postToDeleteId));
-            setProfileLikedPosts(profileLikedPosts.filter(p => p.id !== postToDeleteId));
-            setPostToDeleteId(null);
+            setPosts(prev => prev.filter(p => p.id !== postToDeleteId));
+            setWallPosts(prev => prev.filter(p => p.id !== postToDeleteId));
+            setProfileLikedPosts(prev => prev.filter(p => p.id !== postToDeleteId));
+            showToast("Deleted", "Post was removed successfully.");
         } catch (err) {
-            alert("Помилка видалення поста.");
+            console.error("Failed to delete post", err);
+            showToast("Error", "Could not delete the post.");
         } finally {
             setIsDeletingPost(false);
+            setPostToDeleteId(null);
+        }
+    };
+
+    const handleAddFriend = async () => {
+        if (!user) return;
+        try {
+            if (friendshipStatus === 'NONE' || friendshipStatus === 'PENDING_INCOMING') {
+                await sendFriendRequest(user.id);
+                setFriendshipStatus('PENDING_OUTGOING');
+                showToast("Request Sent", "Friend request sent successfully!");
+            } else if (friendshipStatus === 'FRIENDS' || friendshipStatus === 'PENDING_OUTGOING') {
+                await removeFriendCall(user.id);
+                setFriendshipStatus('NONE');
+                const isUnfriend = friendshipStatus === 'FRIENDS';
+                showToast(isUnfriend ? "Removed" : "Canceled", isUnfriend ? "User has been removed from friends." : "Friend request canceled.");
+            }
+        } catch (error) {
+            console.error('Error handling friendship:', error);
+            showToast("Error", "Could not complete the action.");
+        }
+    };
+
+    const handleRemoveFriendFromList = async (friendId: string) => {
+        try {
+            await removeFriendCall(friendId);
+            setMyFriends(prev => prev.filter(f => f.id !== friendId));
+            showToast("Removed", "Friend removed successfully!");
+        } catch (error) {
+            console.error('Error removing friend:', error);
+            showToast("Error", "Could not remove friend.");
         }
     };
 
@@ -320,12 +381,11 @@ export const ProfilePage: React.FC = () => {
 
     const avatarLetter = user.username ? user.username.substring(0, 1).toUpperCase() : '?';
 
-    // Відфільтрований масив для вкладки Media (Тільки власні пости з фотографіями)
     const mediaPosts = posts.filter(post => post.images && post.images.length > 0);
 
     return (
         <div className="max-w-7xl mx-auto pb-10">
-            {/* Banner */}
+            
             <div className={`h-48 md:h-64 rounded-b-3xl md:rounded-3xl bg-gradient-to-r from-${accentColor}-500 to-${accentColor}-700 relative shadow-lg mb-20`}>
                 <div className="absolute top-4 right-4 flex gap-2">
                     {isOwner && (
@@ -335,7 +395,7 @@ export const ProfilePage: React.FC = () => {
                     )}
                 </div>
 
-                {/* Avatar */}
+                
                 <div className="absolute -bottom-16 left-8 flex items-end gap-6">
                     <div className="relative group">
                         <div className={`w-32 h-32 rounded-2xl bg-white dark:bg-gray-800 border-4 border-white dark:border-gray-900 flex items-center justify-center text-5xl font-bold text-${accentColor}-600 shadow-xl overflow-hidden`}>
@@ -353,7 +413,7 @@ export const ProfilePage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Quick Actions */}
+                
                 <div className="absolute -bottom-14 right-8 flex gap-3">
                     {isOwner ? (
                         <Link
@@ -367,8 +427,22 @@ export const ProfilePage: React.FC = () => {
                             <button className={`px-5 py-2.5 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-${accentColor}-500/30 transition-all`}>
                                 <MessageSquare size={18} /> Message
                             </button>
-                            <button className="px-5 py-2.5 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white rounded-xl font-bold flex items-center gap-2 shadow-lg transition-all border border-gray-200 dark:border-gray-700">
-                                <Users size={18} /> Follow
+                            <button
+                                onClick={handleAddFriend}
+                                className={`px-6 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors shadow-lg ${
+                                    friendshipStatus === 'PENDING_OUTGOING' ? `bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600` 
+                                    : friendshipStatus === 'FRIENDS' ? `bg-red-600 text-white hover:bg-red-700`
+                                    : `bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white shadow-${accentColor}-500/30`
+                                }`}
+                            >
+                                {friendshipStatus === 'FRIENDS' ? <User size={18} /> : friendshipStatus === 'PENDING_OUTGOING' ? <X size={18} /> : <Users size={18} />}
+                                {friendshipStatus === 'NONE' && "Add a friend"}
+                                {friendshipStatus === 'PENDING_OUTGOING' && "Cancel Request"}
+                                {friendshipStatus === 'PENDING_INCOMING' && "Review Request"}
+                                {friendshipStatus === 'FRIENDS' && "Remove"}
+                            </button>
+                            <button className="p-2 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                                <Bookmark size={18} />
                             </button>
                         </>
                     )}
@@ -376,7 +450,7 @@ export const ProfilePage: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 px-4">
-                {/* Left Sidebar (Info) */}
+                
                 <div className="lg:col-span-1 space-y-6">
                     <div>
                         <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -421,11 +495,11 @@ export const ProfilePage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Right Column (Posts & Activity) */}
+                
                 <div className="lg:col-span-2 space-y-6">
-                    {/* Tabs */}
+                    
                     <div className="flex gap-2 overflow-x-auto no-scrollbar border-b border-gray-200 dark:border-gray-800 pb-px">
-                        {(['Posts', 'Media', 'Likes'] as const).map((tab) => (
+                        {(isOwner ? ['Wall', 'Posts', 'Media', 'Likes', 'Friends'] : ['Wall', 'Posts', 'Media', 'Likes']).map((tab: any) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -440,9 +514,98 @@ export const ProfilePage: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* Вміст залежно від вибраної вкладки */}
+                    
 
-                    {/* Вкладка: POSTS */}
+                    
+                    {activeTab === 'Wall' && (
+                        <div className="space-y-6 animate-fadeIn">
+                            
+                            {currentUserId && wallGroupId && (
+                                <div className="bg-white dark:bg-gray-800/30 rounded-2xl p-4 shadow-sm border border-gray-200 dark:border-gray-700/50 mb-6">
+                                    <div className="flex gap-4">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold text-${accentColor}-600 bg-gray-100 dark:bg-gray-700 flex-shrink-0 overflow-hidden`}>
+                                            Me
+                                        </div>
+                                        <div className="flex-1">
+                                            <textarea
+                                                className="w-full bg-transparent border-none outline-none resize-none text-gray-900 dark:text-white placeholder-gray-500 mb-2"
+                                                placeholder={isOwner ? "Write something on your wall..." : `Write on ${user.username}'s wall...`}
+                                                rows={2}
+                                                value={newWallPostText}
+                                                onChange={e => setNewWallPostText(e.target.value)}
+                                            />
+                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                                                <button className={`p-2 text-gray-400 hover:text-${accentColor}-500 hover:bg-${accentColor}-50 dark:hover:bg-${accentColor}-900/20 rounded-lg transition-colors`} title="Attach Photo (Coming soon)">
+                                                    <ImageIcon size={20} />
+                                                </button>
+                                                <button
+                                                    disabled={!newWallPostText.trim() || isPostingToWall}
+                                                    onClick={async () => {
+                                                        if (!newWallPostText.trim()) return;
+                                                        setIsPostingToWall(true);
+                                                        try {
+                                                            const token = localStorage.getItem("access_token");
+                                                            const res = await fetch(`http://localhost:8081/api/v1/posts`, {
+                                                                method: 'POST',
+                                                                headers: {
+                                                                    'Content-Type': 'application/json',
+                                                                    'Authorization': `Bearer ${token}`
+                                                                },
+                                                                body: JSON.stringify({
+                                                                    text: newWallPostText,
+                                                                    groupId: wallGroupId
+                                                                })
+                                                            });
+                                                            if (res.ok) {
+                                                                const created = await res.json();
+                                                                setWallPosts(prev => [created, ...prev]);
+                                                                setNewWallPostText("");
+                                                                showToast("Success", "Post added to wall!");
+                                                            }
+                                                        } catch (e) {
+                                                            console.error("Error creating wall post", e);
+                                                        } finally {
+                                                            setIsPostingToWall(false);
+                                                        }
+                                                    }}
+                                                    className={`px-4 py-1.5 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50`}
+                                                >
+                                                    {isPostingToWall ? "Posting..." : "Post"}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {wallPosts.length === 0 ? (
+                                <div className="text-center py-12 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+                                    <MessageSquare size={48} className="mx-auto text-gray-400 mb-3 opacity-50" />
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white">Wall is empty</h3>
+                                    <p className="text-gray-500">No one has posted here yet.</p>
+                                </div>
+                            ) : (
+                                wallPosts.map(post => (
+                                    <PostItem
+                                        key={post.id}
+                                        post={post}
+                                        currentUserId={currentUserId}
+                                        isPageOwner={isOwner || String(post.authorId) === currentUserId}
+                                        accentColor={accentColor}
+                                        isLiked={currentUserId !== null && likedPosts.has(post.id)}
+                                        onLikeToggle={handleLike}
+                                        isSaved={currentUserId !== null && savedPosts.has(post.id)}
+                                        onSaveToggle={handleSaveToggle}
+                                        onDeleteClick={(id) => setPostToDeleteId(id)}
+                                        onEditSave={handleSaveEdit}
+                                        onImageClick={(url) => setSelectedImage(url)}
+                                    />
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    
                     {activeTab === 'Posts' && (
                         <div className="space-y-6 animate-fadeIn">
                             {posts.length === 0 ? (
@@ -472,7 +635,7 @@ export const ProfilePage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Вкладка: MEDIA */}
+                    
                     {activeTab === 'Media' && (
                         <div className="space-y-6 animate-fadeIn">
                             {mediaPosts.length === 0 ? (
@@ -502,7 +665,7 @@ export const ProfilePage: React.FC = () => {
                         </div>
                     )}
 
-                    {/* Вкладка: LIKES */}
+                    
                     {activeTab === 'Likes' && (
                         <div className="space-y-6 animate-fadeIn">
                             {profileLikedPosts.length === 0 ? (
@@ -517,9 +680,9 @@ export const ProfilePage: React.FC = () => {
                                         key={post.id}
                                         post={post}
                                         currentUserId={currentUserId}
-                                        isPageOwner={isOwner} // Дозволяємо видалення/ред. тільки якщо це мій пост
+                                        isPageOwner={isOwner}
                                         accentColor={accentColor}
-                                        isLiked={likedPosts.has(post.id)} // Перевіряємо, чи Я лайкнув цей пост
+                                        isLiked={likedPosts.has(post.id)}
                                         onLikeToggle={handleLike}
                                         isSaved={currentUserId !== null && savedPosts.has(post.id)}
                                         onSaveToggle={handleSaveToggle}
@@ -531,15 +694,54 @@ export const ProfilePage: React.FC = () => {
                             )}
                         </div>
                     )}
+
+                    
+                    {activeTab === 'Friends' && (
+                        <div className="space-y-6 animate-fadeIn">
+                            {myFriends.length === 0 ? (
+                                <div className="text-center py-16 bg-gray-50 dark:bg-gray-800/20 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700">
+                                    <Users size={48} className="mx-auto text-gray-400 mb-4 opacity-50" />
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Friends List</h3>
+                                    <p className="text-gray-500">Manage your friends and friend requests.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {myFriends.map(friend => (
+                                        <div key={friend.id} className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-full overflow-hidden">
+                                                {friend.avatarUrl ? (
+                                                    <img src={friend.avatarUrl} alt={friend.username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className={`w-full h-full flex items-center justify-center text-xl font-bold text-${accentColor}-600`}>
+                                                        {friend.username.substring(0, 1).toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1">
+                                                <Link to={`/profile/${friend.id}`} className="font-medium text-gray-900 dark:text-white hover:underline">
+                                                    {friend.firstName} {friend.lastName}
+                                                </Link>
+                                                <p className="text-sm text-gray-500 dark:text-gray-400">@{friend.username}</p>
+                                            </div>
+                                            <button onClick={() => handleRemoveFriendFromList(friend.id)} className={`px-4 py-2 rounded-xl font-semibold transition-all flex items-center gap-2 bg-red-600 text-white hover:bg-red-700`}>
+                                                <User size={16} /> 
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* Модалка перегляду фото */}
+            
             {selectedImage && (
                 <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
             )}
 
-            {/* Модалка підтвердження видалення поста */}
+            
             {postToDeleteId !== null && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn" onClick={() => setPostToDeleteId(null)}>
                     <div className="bg-white dark:bg-gray-900 rounded-2xl w-full max-w-md p-6 shadow-2xl animate-zoomIn relative" onClick={e => e.stopPropagation()}>
@@ -562,6 +764,21 @@ export const ProfilePage: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            
+            {toastMessage && (
+                <div className="fixed bottom-6 right-6 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 animate-fadeInFromBottom z-50">
+                    <Check size={20} className={`text-${accentColor}-500 dark:text-${accentColor}-500`} />
+                    <div>
+                        <h4 className="font-bold text-sm">{toastMessage.title}</h4>
+                        <p className="text-xs opacity-80">{toastMessage.message}</p>
+                    </div>
+                    <button onClick={() => setToastMessage(null)} className="ml-4 p-1 hover:bg-white/20 dark:hover:bg-black/10 rounded-lg transition-colors">
+                        <X size={16} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
+

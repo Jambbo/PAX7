@@ -25,7 +25,6 @@ import {
 import { AuthModal } from "../../..//widgets/AuthModal/AuthModal";
 
 export const GroupsPage: React.FC = () => {
-    // --- COLOR LOGIC ---
     const [accentColor, setAccentColor] = useState(() => {
         return localStorage.getItem('site_accent_color') || 'purple';
     });
@@ -43,16 +42,13 @@ export const GroupsPage: React.FC = () => {
             window.removeEventListener('accent-color-change', handleStorageChange);
         };
     }, []);
-    // -----------------------
 
-    // ===== AUTH MODAL STATE & LOGIC =====
     const [authModal, setAuthModal] = useState({
         isOpen: false,
         title: "",
         message: ""
     });
 
-    // Універсальна функція перевірки авторизації
     const requireAuth = (title: string, message: string) => {
         const token = localStorage.getItem("access_token");
         if (!token || token === "undefined") {
@@ -61,7 +57,6 @@ export const GroupsPage: React.FC = () => {
         }
         return true;
     };
-    // ====================================
 
     const [activeTab, setActiveTab] = useState<'discover' | 'joined' | 'myGroups'>('discover');
     const [searchQuery, setSearchQuery] = useState('');
@@ -69,23 +64,19 @@ export const GroupsPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
 
-    // GLOBAL STATS
     const [allGroupsCount, setAllGroupsCount] = useState(0);
     const [joinedGroupsCount, setJoinedGroupsCount] = useState(0);
     const [totalMembersCount, setTotalMembersCount] = useState<Number>(0);
     const [totalPostsCount, setTotalPostsCount] = useState(0);
 
-    // LOAD STATS ONCE
     useEffect(() => {
         const loadStats = async () => {
             try {
                 const token = localStorage.getItem("access_token");
 
-                // 1. Total Communities
                 const all = await fetchAllGroups();
                 setAllGroupsCount(all.length);
 
-                // 2. Joined Communities
                 if (token && token !== "undefined") {
                     const joined = await fetchMyGroups();
                     setJoinedGroupsCount(joined.length);
@@ -93,11 +84,9 @@ export const GroupsPage: React.FC = () => {
                     setJoinedGroupsCount(0);
                 }
 
-                // 3. Total Members
                 const membersCount = await fetchUsersCount();
                 setTotalMembersCount(membersCount);
 
-                // 4. Total Posts (Робимо прямий запит до всіх постів, щоб гарантовано отримати точну кількість)
                 try {
                     const postsResponse = await fetch(`http://localhost:8081/api/v1/posts/all?t=${new Date().getTime()}`);
                     if (postsResponse.ok) {
@@ -105,7 +94,7 @@ export const GroupsPage: React.FC = () => {
                         setTotalPostsCount(allPostsData.length);
                     }
                 } catch (postErr) {
-                    console.error("Не вдалося завантажити кількість постів", postErr);
+                    console.error("Failed to load post count", postErr);
                 }
 
             } catch (e) {
@@ -116,7 +105,6 @@ export const GroupsPage: React.FC = () => {
         loadStats();
     }, []);
 
-    // LOAD GROUPS BASED ON ACTIVE TAB
     useEffect(() => {
         const loadGroups = async () => {
             setIsLoading(true);
@@ -124,14 +112,13 @@ export const GroupsPage: React.FC = () => {
                 const token = localStorage.getItem("access_token");
                 let backendGroups = [];
 
-                // Витягуємо ID поточного юзера з токена
                 let currentUserId: string | null = null;
                 if (token && token !== "undefined") {
                     try {
                         const payload = JSON.parse(atob(token.split('.')[1]));
                         currentUserId = payload.sub;
                     } catch (e) {
-                        console.error("Помилка парсингу токена", e);
+                        console.error("Token parsing error", e);
                     }
                 }
 
@@ -149,7 +136,6 @@ export const GroupsPage: React.FC = () => {
                         setIsLoading(false);
                         return;
                     }
-                    // Робимо прямий запит до бекенду, щоб отримати групи поточного власника
                     try {
                         const ownerRes = await fetch(`http://localhost:8081/api/v1/groups/owner/${currentUserId}`, {
                             headers: { "Authorization": `Bearer ${token}` }
@@ -158,7 +144,6 @@ export const GroupsPage: React.FC = () => {
                         if (ownerRes.ok) {
                             backendGroups = await ownerRes.json();
                         } else {
-                            // Fallback: якщо ендпоінт не працює, фільтруємо вручну
                             const allGroups = await fetchAllGroups();
                             backendGroups = allGroups.filter((bg: any) =>
                                 String(bg.ownerId) === String(currentUserId) || String(bg.creatorId) === String(currentUserId)
@@ -184,7 +169,7 @@ export const GroupsPage: React.FC = () => {
                     members: bg.memberCount || bg.membersCount || 0,
                     posts: bg.postCount || 0,
                     category: "General",
-                    isJoined: activeTab === 'joined' || activeTab === 'myGroups', // Якщо 'myGroups', він автоматично вважається приєднаним
+                    isJoined: activeTab === 'joined' || activeTab === 'myGroups',
                     isVerified: false,
                     onlineMembers: 1,
                     ownerId: bg.ownerId || bg.creatorId
@@ -193,7 +178,7 @@ export const GroupsPage: React.FC = () => {
                 setCommunities(formattedGroups);
 
             } catch (error) {
-                console.error("Помилка завантаження груп:", error);
+                console.error("Error loading communities:", error);
             } finally {
                 setIsLoading(false);
             }
@@ -204,7 +189,6 @@ export const GroupsPage: React.FC = () => {
 
     const [selectedCategory, setSelectedCategory] = useState("All Categories");
 
-    // ===== CREATE COMMUNITY MODAL STATE =====
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [serverError, setServerError] = useState<string | null>(null);
@@ -241,7 +225,6 @@ export const GroupsPage: React.FC = () => {
 
             const newBackendGroup = await createGroup(payload);
 
-            // Дістаємо поточного юзера для локального відображення
             const token = localStorage.getItem("access_token");
             let currentUserId = null;
             if (token && token !== "undefined") {
@@ -268,15 +251,13 @@ export const GroupsPage: React.FC = () => {
             setIsCreateOpen(false);
             setCommunities(prev => [newCommunity, ...prev]);
 
-            // Оновлюємо статистику
             setAllGroupsCount(prev => prev + 1);
             setJoinedGroupsCount(prev => prev + 1);
 
-            // Відразу переходимо на вкладку My Groups, щоб юзер побачив свою групу
             setActiveTab('myGroups');
 
         } catch (err: any) {
-            setServerError("Не вдалося створити спільноту. Перевірте формат даних або сервер.");
+            setServerError("Failed to create community. Check data format or server.");
         } finally {
             setIsSubmitting(false);
         }
@@ -315,7 +296,7 @@ export const GroupsPage: React.FC = () => {
             );
 
         } catch (err) {
-            console.error("Помилка:", err);
+            console.error("Error:", err);
         }
     };
 
@@ -333,7 +314,7 @@ export const GroupsPage: React.FC = () => {
 
     return (
         <div className="max-w-7xl mx-auto">
-            {/* Header */}
+            
             <div className="mb-8">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3 transition-colors">
                     <Users className={`text-${accentColor}-500`} size={40}/>
@@ -344,7 +325,7 @@ export const GroupsPage: React.FC = () => {
                 </p>
             </div>
 
-            {/* Stats Bar */}
+            
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                 <div className={`bg-${accentColor}-50 dark:bg-${accentColor}-900/10 border border-${accentColor}-200 dark:border-${accentColor}-500/20 rounded-xl p-4 transition-colors`}>
                     <div className="flex items-center gap-3">
@@ -396,10 +377,10 @@ export const GroupsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Filters and Search */}
+            
             <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-4 mb-6 shadow-sm transition-colors">
                 <div className="flex flex-col lg:flex-row gap-4">
-                    {/* Tabs */}
+                    
                     <div className="flex gap-2">
                         {[
                             {id: 'discover', label: 'Discover'},
@@ -423,7 +404,7 @@ export const GroupsPage: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* Search */}
+                    
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18}/>
                         <input
@@ -435,7 +416,7 @@ export const GroupsPage: React.FC = () => {
                         />
                     </div>
 
-                    {/* Create Button */}
+                    
                     <button
                         onClick={openCreateModal}
                         className={`px-4 py-2 bg-${accentColor}-600 hover:bg-${accentColor}-700 text-white rounded-lg transition-all shadow-lg shadow-${accentColor}-500/20 font-medium flex items-center gap-2 whitespace-nowrap`}
@@ -445,7 +426,7 @@ export const GroupsPage: React.FC = () => {
                     </button>
                 </div>
 
-                {/* Category Pills */}
+                
                 <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
                     {categories.map((category) => (
                         <button
@@ -463,14 +444,14 @@ export const GroupsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Content Loading */}
+            
             {isLoading ? (
                 <div className="flex justify-center items-center py-20">
                     <div className={`animate-spin rounded-full h-12 w-12 border-b-2 border-${accentColor}-600`}></div>
                 </div>
             ) : (
                 <>
-                    {/* Communities Grid */}
+                    
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {filteredCommunities.map((community) => (
                             <div
@@ -478,7 +459,7 @@ export const GroupsPage: React.FC = () => {
                                 onClick={() => navigate(`/groups/${community.id}`)}
                                 className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 transition-all group shadow-sm hover:shadow-md cursor-pointer"
                             >
-                                {/* Banner */}
+                                
                                 <div className={`h-24 bg-gradient-to-r ${community.banner} relative`}>
                                     <div className="absolute top-3 right-3 flex gap-2">
                                         {activeTab === 'myGroups' && (
@@ -501,14 +482,14 @@ export const GroupsPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                {/* Content */}
+                                
                                 <div className="p-5">
-                                    {/* Avatar */}
+                                    
                                     <div className="flex items-start justify-between mb-3 -mt-12">
                                         <div className={`z-10 w-20 h-20 bg-gradient-to-r ${community.banner} rounded-xl flex items-center justify-center font-bold text-white text-2xl border-4 border-white dark:border-gray-800 shadow-md`}>
                                             {community.avatar}
                                         </div>
-                                        {/* Не показуємо кнопку Join на вкладці My Groups (бо там ти власник) */}
+                                        
                                         {activeTab !== 'myGroups' && (
                                             <button
                                                 onClick={(e) => {
@@ -536,7 +517,7 @@ export const GroupsPage: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* Info */}
+                                    
                                     <h3 className="text-gray-900 dark:text-white font-bold text-lg mb-1 flex items-center gap-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
                                         {community.name}
                                         {community.isVerified && (
@@ -547,7 +528,7 @@ export const GroupsPage: React.FC = () => {
                                         {community.description}
                                     </p>
 
-                                    {/* Stats */}
+                                    
                                     <div className="flex items-center justify-between text-sm">
                                         <div className="flex items-center gap-4 text-gray-500 dark:text-gray-400">
                                             <div className="flex items-center gap-1" title="Members">
@@ -565,7 +546,7 @@ export const GroupsPage: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* Category Tag */}
+                                    
                                     <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700/50">
                                         <span className={`inline-block px-3 py-1 bg-${accentColor}-50 dark:bg-${accentColor}-900/20 text-${accentColor}-700 dark:text-${accentColor}-300 rounded-full text-xs font-medium transition-colors`}>
                                             {community.category}
@@ -576,7 +557,7 @@ export const GroupsPage: React.FC = () => {
                         ))}
                     </div>
 
-                    {/* Empty State */}
+                    
                     {filteredCommunities.length === 0 && (
                         <div className="bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-xl p-12 text-center shadow-sm">
                             <Users size={48} className="text-gray-400 mx-auto mb-4"/>
@@ -610,7 +591,7 @@ export const GroupsPage: React.FC = () => {
                 </>
             )}
 
-            {/* Create Community Modal */}
+            
             <CreateCommunityModal
                 isOpen={isCreateOpen}
                 onClose={closeCreateModal}
@@ -619,7 +600,7 @@ export const GroupsPage: React.FC = () => {
                 serverError={serverError}
             />
 
-            {/* МОДАЛЬНЕ ВІКНО АВТОРИЗАЦІЇ */}
+            
             <AuthModal
                 isOpen={authModal.isOpen}
                 onClose={() => setAuthModal({ ...authModal, isOpen: false })}
