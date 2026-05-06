@@ -48,6 +48,11 @@ services:
       JAVA_OPTS: -Dkeycloak.migration.usersExportStrategy=REALM_FILE
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_URL: "http://localhost:8080"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: "xforwarded"
       KC_DB: postgres
       KC_DB_URL: ${KC_DB_URL}
       KC_DB_USERNAME: ${KC_DB_USERNAME}

@@ -207,4 +207,49 @@ public class NotificationServiceImplTest {
         // Then
         then(notificationRepository).should().deleteAllByRecipientId(userId);
     }
+
+    @Test
+    @DisplayName("Test mark as read by wrong user throws exception")
+    public void givenWrongUser_whenMarkAsRead_thenThrowIllegalArgument() {
+        // Given
+        Long notificationId = 1L;
+        User recipient = new User(); recipient.setId("owner");
+        Notification notification = new Notification();
+        notification.setId(notificationId);
+        notification.setRecipient(recipient);
+
+        given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> notificationService.markAsRead(notificationId, "other-user"));
+    }
+
+    @Test
+    @DisplayName("Test delete notification by wrong user throws exception")
+    public void givenWrongUser_whenDeleteNotification_thenThrowIllegalArgument() {
+        // Given
+        Long notificationId = 1L;
+        User recipient = new User(); recipient.setId("owner");
+        Notification notification = new Notification();
+        notification.setId(notificationId);
+        notification.setRecipient(recipient);
+
+        given(notificationRepository.findById(notificationId)).willReturn(Optional.of(notification));
+
+        // When & Then
+        assertThrows(IllegalArgumentException.class,
+                () -> notificationService.deleteNotification(notificationId, "intruder"));
+    }
+
+    @Test
+    @DisplayName("Test mark as read for non-existent notification throws exception")
+    public void givenMissingNotification_whenMarkAsRead_thenThrowResourceNotFound() {
+        // Given
+        given(notificationRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class,
+                () -> notificationService.markAsRead(99L, "user1"));
+    }
 }

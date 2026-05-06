@@ -1,5 +1,4 @@
 package com.example.system.repository;
-
 import com.example.system.domain.model.Group;
 import com.example.system.domain.model.GroupPrivacy;
 import org.springframework.data.jpa.repository.JpaRepository;

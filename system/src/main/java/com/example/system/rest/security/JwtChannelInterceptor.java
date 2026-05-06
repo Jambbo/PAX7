@@ -43,12 +43,12 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
 
                 String token = authHeader.substring(7);
-
+                //validates the signature against keycloak's public key
                 Jwt jwt = jwtDecoder.decode(token);
 
                 Authentication auth =
                         new JwtAuthenticationToken(jwt);
-
+                //sets the user, so on principal.getName() returns keycloak user id
                 accessor.setUser(auth);
             }
         }
