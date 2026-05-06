@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Client } from '@stomp/stompjs';
 import toast from 'react-hot-toast';
 import { addNotification, syncMissedNotifications, fetchInitialNotifications } from './notificationsSlice';
+import { syncNotifications } from './notificationService';
 import { RootState, AppDispatch } from '../../app/layout/store';
 import { store } from '../../app/layout/store';
 
@@ -83,6 +84,16 @@ export const useNotificationSocket = () => {
                     destination: '/app/notifications.sync',
                     body: JSON.stringify({ lastMessageId: lastId })
                 });
+
+                syncNotifications(lastId)
+                    .then((missedNotifications) => {
+                        if (missedNotifications && missedNotifications.length > 0) {
+                            dispatch(syncMissedNotifications(missedNotifications));
+                        }
+                    })
+                    .catch((err) => {
+                        console.error('Failed to sync notifications natively over HTTP:', err);
+                    });
             },
             onStompError: (frame) => {
                 console.error('Broker reported error: ' + frame.headers['message']);

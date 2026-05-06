@@ -115,14 +115,14 @@ public class GroupServiceImplTest {
     public void givenNullJwt_whenGetAll_thenReturnAllGroups() {
         // Given
         List<Group> groups = List.of(new Group(), new Group());
-        given(groupRepository.findAll()).willReturn(groups);
+        given(groupRepository.findAllVisibleGroups()).willReturn(groups);
 
         // When
         List<Group> result = groupService.getAll(null);
 
         // Then
         assertEquals(2, result.size());
-        then(groupRepository).should().findAll();
+        then(groupRepository).should().findAllVisibleGroups();
     }
 
     @Test
@@ -321,5 +321,69 @@ public class GroupServiceImplTest {
         // Then
         assertEquals(0, group.getMemberCount());
         verify(groupRepository, never()).save(any(Group.class));
+    }
+
+    @Test
+    @DisplayName("Test update group with all fields set")
+    public void givenFullUpdateData_whenUpdate_thenAllFieldsAreUpdated() {
+        // Given
+        Long groupId = 1L;
+        Group existing = new Group();
+        existing.setId(groupId);
+        existing.setName("Old");
+        existing.setPrivacy(null);
+        existing.setLocation(null);
+
+        Group updateData = new Group();
+        updateData.setName("New Name");
+        updateData.setDescription("New Desc");
+        updateData.setPrivacy(com.example.system.domain.model.GroupPrivacy.PUBLIC);
+        updateData.setLocation("Kyiv");
+
+        given(groupRepository.findById(groupId)).willReturn(Optional.of(existing));
+        given(groupRepository.save(existing)).willReturn(existing);
+
+        // When
+        Group result = groupService.update(groupId, updateData);
+
+        // Then
+        assertEquals("New Name", result.getName());
+        assertEquals("New Desc", result.getDescription());
+        assertEquals(com.example.system.domain.model.GroupPrivacy.PUBLIC, result.getPrivacy());
+        assertEquals("Kyiv", result.getLocation());
+    }
+
+    @Test
+    @DisplayName("Test join user with non-existent group throws exception")
+    public void givenInvalidGroup_whenJoinUser_thenThrowException() {
+        // Given
+        given(groupRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> groupService.joinUser(99L, "user1"));
+    }
+
+    @Test
+    @DisplayName("Test join user with non-existent user throws exception")
+    public void givenInvalidUser_whenJoinUser_thenThrowException() {
+        // Given
+        Group group = new Group();
+        group.setId(1L);
+        group.setMembers(new HashSet<>());
+        given(groupRepository.findById(1L)).willReturn(Optional.of(group));
+        given(userRepository.findById("ghost")).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> groupService.joinUser(1L, "ghost"));
+    }
+
+    @Test
+    @DisplayName("Test leave user with non-existent group throws exception")
+    public void givenInvalidGroup_whenLeaveUser_thenThrowException() {
+        // Given
+        given(groupRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> groupService.leaveUser(99L, "user1"));
     }
 }

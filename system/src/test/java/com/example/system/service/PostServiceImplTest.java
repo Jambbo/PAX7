@@ -93,14 +93,14 @@ public class PostServiceImplTest {
     public void givenPosts_whenGetAllPosts_thenReturnList() {
         // Given
         List<Post> posts = List.of(new Post(), new Post());
-        given(postRepository.findAll()).willReturn(posts);
+        given(postRepository.findAllVisiblePosts()).willReturn(posts);
 
         // When
         List<Post> result = postService.getAllPosts();
 
         // Then
         assertEquals(2, result.size());
-        then(postRepository).should().findAll();
+        then(postRepository).should().findAllVisiblePosts();
     }
 
     @Test
@@ -257,5 +257,105 @@ public class PostServiceImplTest {
         then(notificationService).shouldHaveNoInteractions();
         then(userRepository).should().save(user);
         then(postRepository).should().save(post);
+    }
+
+    @Test
+    @DisplayName("Test get post by id not found throws exception")
+    public void givenInvalidPostId_whenGetPostById_thenThrowException() {
+        // Given
+        given(postRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> postService.getPostById(99L));
+        assertTrue(ex.getMessage().contains("99"));
+    }
+
+    @Test
+    @DisplayName("Test update post applies non-null images")
+    public void givenPostWithImages_whenUpdatePost_thenImagesAreUpdated() {
+        // Given
+        Long postId = 1L;
+        Post existing = new Post(); existing.setId(postId);
+
+        Post updateData = new Post();
+        updateData.setImages(List.of("img1.png", "img2.png"));
+
+        given(postRepository.findById(postId)).willReturn(Optional.of(existing));
+        given(postRepository.save(existing)).willReturn(existing);
+
+        // When
+        Post result = postService.updatePost(postId, updateData);
+
+        // Then
+        assertEquals(List.of("img1.png", "img2.png"), result.getImages());
+    }
+
+    @Test
+    @DisplayName("Test get top posts by views delegates to repository")
+    public void givenPosts_whenGetTopPostsByViews_thenReturnList() {
+        // Given
+        given(postRepository.findTopByViews()).willReturn(List.of(new Post()));
+
+        // When
+        List<Post> result = postService.getTopPostsByViews();
+
+        // Then
+        assertEquals(1, result.size());
+        then(postRepository).should().findTopByViews();
+    }
+
+    @Test
+    @DisplayName("Test get top posts by likes delegates to repository")
+    public void givenPosts_whenGetTopPostsByLikes_thenReturnList() {
+        // Given
+        given(postRepository.findTopByLikes()).willReturn(List.of(new Post()));
+
+        // When
+        List<Post> result = postService.getTopPostsByLikes();
+
+        // Then
+        assertEquals(1, result.size());
+        then(postRepository).should().findTopByLikes();
+    }
+
+    @Test
+    @DisplayName("Test increment views initialises views to 1 when views is null")
+    public void givenPostWithNullViews_whenIncrementViews_thenViewsSetToOne() {
+        // Given
+        Long postId = 1L;
+        Post post = new Post(); post.setId(postId); post.setViews(null);
+
+        given(postRepository.findById(postId)).willReturn(Optional.of(post));
+        given(postRepository.save(post)).willReturn(post);
+
+        // When
+        Post result = postService.incrementViews(postId);
+
+        // Then
+        assertEquals(1L, result.getViews());
+    }
+
+    @Test
+    @DisplayName("Test like post with no author sends no notification")
+    public void givenPostWithNoAuthor_whenIncrementLikes_thenNoNotificationSent() {
+        // Given
+        Long postId = 1L;
+        String userId = "user1";
+
+        Post post = new Post(); post.setId(postId); post.setLikes(0L); // no author
+
+        User user = new User(); user.setId(userId); user.setLikedPosts(new HashSet<>());
+
+        given(postRepository.findById(postId)).willReturn(Optional.of(post));
+        given(userService.getUserById(userId)).willReturn(user);
+        given(userRepository.save(user)).willReturn(user);
+        given(postRepository.save(post)).willReturn(post);
+
+        // When
+        postService.incrementLikesAndAddToUser(postId, userId);
+
+        // Then
+        then(notificationService).shouldHaveNoInteractions();
     }
 }

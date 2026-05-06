@@ -277,4 +277,172 @@ public class CommentServiceImplTest {
         assertEquals(0, comment.getLikes());
         then(commentLikeRepository).should().delete(like);
     }
+
+    @Test
+    @DisplayName("Test liking a comment that already has a dislike switches vote to like")
+    public void givenExistingDislike_whenLikeComment_thenVoteIsSwitchedToLike() {
+        // Given
+        Long commentId = 1L;
+        String userId = "user1";
+
+        Comment comment = new Comment();
+        comment.setId(commentId);
+        comment.setLikes(0L);
+        comment.setDislikes(1L);
+
+        User user = new User(); user.setId(userId);
+        CommentLikeId id = new CommentLikeId(commentId, userId);
+        CommentLike existingDislike = new CommentLike();
+        existingDislike.setIsLike(false);
+
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(commentLikeRepository.findById(id)).willReturn(Optional.of(existingDislike));
+        given(commentRepository.save(comment)).willReturn(comment);
+
+        // When
+        commentService.likeComment(commentId, userId);
+
+        // Then
+        assertEquals(1L, comment.getLikes());
+        assertEquals(0L, comment.getDislikes());
+    }
+
+    @Test
+    @DisplayName("Test disliking a comment that already has a like switches vote to dislike")
+    public void givenExistingLike_whenDislikeComment_thenVoteIsSwitchedToDislike() {
+        // Given
+        Long commentId = 1L;
+        String userId = "user1";
+
+        Comment comment = new Comment();
+        comment.setId(commentId);
+        comment.setLikes(1L);
+        comment.setDislikes(0L);
+
+        User user = new User(); user.setId(userId);
+        CommentLikeId id = new CommentLikeId(commentId, userId);
+        CommentLike existingLike = new CommentLike();
+        existingLike.setIsLike(true);
+
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(userRepository.findById(userId)).willReturn(Optional.of(user));
+        given(commentLikeRepository.findById(id)).willReturn(Optional.of(existingLike));
+        given(commentRepository.save(comment)).willReturn(comment);
+
+        // When
+        commentService.dislikeComment(commentId, userId);
+
+        // Then
+        assertEquals(0L, comment.getLikes());
+        assertEquals(1L, comment.getDislikes());
+    }
+
+    @Test
+    @DisplayName("Test removing a dislike decrements dislikes")
+    public void givenExistingDislike_whenRemoveLikeOrDislike_thenDislikesDecremented() {
+        // Given
+        Long commentId = 1L;
+        String userId = "user1";
+
+        Comment comment = new Comment();
+        comment.setId(commentId);
+        comment.setDislikes(1L);
+
+        CommentLikeId id = new CommentLikeId(commentId, userId);
+        CommentLike dislike = new CommentLike();
+        dislike.setIsLike(false);
+
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+        given(commentLikeRepository.findById(id)).willReturn(Optional.of(dislike));
+        given(commentRepository.save(comment)).willReturn(comment);
+
+        // When
+        commentService.removeLikeOrDislike(commentId, userId);
+
+        // Then
+        assertEquals(0L, comment.getDislikes());
+        then(commentLikeRepository).should().delete(dislike);
+    }
+
+    @Test
+    @DisplayName("Test deleting a comment by unauthorized user throws exception")
+    public void givenUnauthorizedUser_whenDeleteComment_thenThrowException() {
+        // Given
+        Long commentId = 1L;
+        String requesterId = "user3";
+
+        Comment comment = new Comment();
+        User commentAuthor = new User(); commentAuthor.setId("user1");
+        comment.setAuthor(commentAuthor);
+
+        Post post = new Post();
+        User postAuthor = new User(); postAuthor.setId("user2");
+        post.setAuthor(postAuthor);
+        comment.setPost(post);
+
+        given(commentRepository.findById(commentId)).willReturn(Optional.of(comment));
+
+        // When & Then
+        RuntimeException ex = assertThrows(RuntimeException.class,
+                () -> commentService.deleteComment(commentId, requesterId));
+        assertEquals("User is not authorized to delete this comment", ex.getMessage());
+    }
+
+    @Test
+    @DisplayName("Test add comment when post not found throws exception")
+    public void givenInvalidPostId_whenAddComment_thenThrowException() {
+        // Given
+        given(postRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class,
+                () -> commentService.addComment(99L, "user1", new Comment()));
+    }
+
+    @Test
+    @DisplayName("Test update comment when comment not found throws exception")
+    public void givenInvalidCommentId_whenUpdateComment_thenThrowException() {
+        // Given
+        given(commentRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class,
+                () -> commentService.updateComment(99L, "user1", "new content"));
+    }
+
+    @Test
+    @DisplayName("Test delete comment when comment not found throws exception")
+    public void givenInvalidCommentId_whenDeleteComment_thenThrowException() {
+        // Given
+        given(commentRepository.findById(99L)).willReturn(Optional.empty());
+
+        // When & Then
+        assertThrows(RuntimeException.class,
+                () -> commentService.deleteComment(99L, "user1"));
+    }
+
+    @Test
+    @DisplayName("Test adding a comment on a post with no author sends no notification")
+    public void givenPostWithNoAuthor_whenAddComment_thenNoNotificationSent() {
+        // Given
+        Long postId = 1L;
+        String authorId = "user1";
+        Comment comment = new Comment();
+
+        Post post = new Post(); post.setId(postId); // no author set
+        User author = new User(); author.setId(authorId);
+
+        Comment savedComment = new Comment(); savedComment.setId(10L);
+
+        given(postRepository.findById(postId)).willReturn(Optional.of(post));
+        given(userRepository.findById(authorId)).willReturn(Optional.of(author));
+        given(commentRepository.save(comment)).willReturn(savedComment);
+
+        // When
+        commentService.addComment(postId, authorId, comment);
+
+        // Then
+        then(notificationService).shouldHaveNoInteractions();
+    }
 }

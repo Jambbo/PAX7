@@ -107,13 +107,34 @@ tasks.jacocoTestReport {
 tasks.jacocoTestCoverageVerification {
     dependsOn(tasks.test)
     violationRules {
+
         rule {
             element = "PACKAGE"
             includes = listOf("com.example.system.service.*")
             limit {
                 counter = "INSTRUCTION"
                 value = "COVEREDRATIO"
-                minimum = "0.00".toBigDecimal() //TODO change coverage minimum when tests are implemented
+                minimum = "0.90".toBigDecimal()
+            }
+        }
+
+        rule {
+            element = "PACKAGE"
+            includes = listOf("com.example.system.rest.security")
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.90".toBigDecimal()
+            }
+        }
+
+        rule {
+            element = "PACKAGE"
+            includes = listOf("com.example.system.rest.controller.advice")
+            limit {
+                counter = "INSTRUCTION"
+                value = "COVEREDRATIO"
+                minimum = "0.90".toBigDecimal()
             }
         }
     }
