@@ -28,7 +28,7 @@ PAX is a full-stack social platform built for real-time communication and commun
 ## Features
 
 - **Authentication** — OAuth2 Authorization Code Flow with PKCE via Keycloak. JWT access tokens validated by the resource server.
-- **Posts & Feed** — Create, update, delete posts with image support. Like, bookmark, and view trending content sorted by views or likes.
+- **Posts & Feed** — Create, update, delete posts. Like, bookmark, and view trending content sorted by views or likes.
 - **Groups** — Public and private groups with owner/admin roles, member counts, and a personal wall group per user.
 - **Comments** — Threaded comments with independent like/dislike reactions.
 - **Real-time Chat** — WebSocket-based direct messaging using STOMP over SockJS with attachment support.
